@@ -192,13 +192,12 @@
 
     // PASTE FIREBASE CONFIG ANDA DI SINI
     const firebaseConfig = {
-   apiKey: "AIzaSyBLcQBWPQ0nctKgYVupr2D62T9EamuM0DA",
+apiKey: "AIzaSyBLcQBWPQ0nctKgYVupr2D62T9EamuM0DA",
   authDomain: "erapor-bw.firebaseapp.com",
   projectId: "erapor-bw",
   storageBucket: "erapor-bw.firebasestorage.app",
   messagingSenderId: "845028673605",
-  appId: "1:845028673605:web:78adfd9cfb5a7f7331fb2c"
-    };
+  appId: "1:845028673605:web:78adfd9cfb5a7f7331fb2c"    };
 
     // =========================================================================
     // SERVICE WORKER DINAMIS (PWA 1 FILE)
@@ -1467,6 +1466,60 @@
       showToast('Data kelas dihapus');
     };
 
+    window.openEditKelasModal = function (kelasId) {
+      const k = state.kelas.find(item => item.id === kelasId);
+      if (!k) return;
+      openModal(`
+        <form onsubmit="saveEditKelasForm(event, '${k.id}')" class="space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h3 class="text-base font-extrabold text-slate-900">Edit Data Kelas</h3>
+            <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Kategori Program *</label>
+              <select name="kategori" required class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-semibold">
+                <option value="Diniyah" ${k.kategori === 'Diniyah' ? 'selected' : ''}>Diniyah</option>
+                <option value="Al-Qur'an" ${k.kategori === "Al-Qur'an" ? 'selected' : ''}>Al-Qur'an</option>
+                <option value="Bahasa Arab" ${k.kategori === 'Bahasa Arab' ? 'selected' : ''}>Bahasa Arab</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Jenjang / Tingkatan *</label>
+              <input type="text" name="jenjang" required value="${k.jenjang || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Nama Kelas *</label>
+              <input type="text" name="namaKelas" required value="${k.namaKelas || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Wali Kelas *</label>
+              <input type="text" name="waliKelas" required value="${k.waliKelas || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Batal</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold">Simpan Perubahan</button>
+          </div>
+        </form>
+      `);
+    };
+
+    window.saveEditKelasForm = async function (e, kelasId) {
+      e.preventDefault();
+      const f = e.target;
+      const payload = {
+        kategori: f.kategori.value,
+        jenjang: f.jenjang.value.trim(),
+        namaKelas: f.namaKelas.value.trim(),
+        waliKelas: f.waliKelas.value.trim()
+      };
+      await saveData('kelas', 'kelas', payload, kelasId);
+      await logAudit('Edit Kelas', `Memperbarui kelas ${payload.namaKelas} (${payload.kategori})`);
+      closeModal();
+      showToast('Perubahan data kelas berhasil disimpan');
+    };
+
     function renderMasterKelas() {
       const categories = ['Semua', 'Diniyah', "Al-Qur'an", 'Bahasa Arab'];
       const filteredKelas = state.selectedKelasKategoriFilter === 'Semua'
@@ -1545,7 +1598,8 @@
                       <td class="p-3 font-medium">${k.jenjang || '-'}</td>
                       <td class="p-3 font-extrabold text-slate-900">${k.namaKelas}</td>
                       <td class="p-3">${k.waliKelas || '-'}</td>
-                      <td class="p-3 text-right">
+                      <td class="p-3 text-right whitespace-nowrap space-x-1">
+                        <button type="button" onclick="openEditKelasModal('${k.id}')" class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold">Edit</button>
                         <button type="button" onclick="deleteKelas('${k.id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold">Hapus</button>
                       </td>
                     </tr>
@@ -1583,6 +1637,64 @@
     window.deleteMapel = async function (id) {
       await removeData('mata_pelajaran', 'mataPelajaran', id);
       showToast('Mata pelajaran dihapus');
+    };
+
+    window.openEditMapelModal = function (mapelId) {
+      const m = state.mataPelajaran.find(item => item.id === mapelId);
+      if (!m) return;
+      openModal(`
+        <form onsubmit="saveEditMapelForm(event, '${m.id}')" class="space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h3 class="text-base font-extrabold text-slate-900">Edit Data Mata Pelajaran</h3>
+            <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-700 mb-1">Kelas & Program *</label>
+              <select name="kelasId" required class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-semibold">
+                <option value="">-- Pilih Kelas --</option>
+                ${state.kelas.map(k => `<option value="${k.id}" ${m.kelasId === k.id ? 'selected' : ''}>[${k.kategori}] ${k.namaKelas} (${k.jenjang || '-'})</option>`).join('')}
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block font-bold text-slate-700 mb-1">Nama Mata Pelajaran / Kitab *</label>
+              <input type="text" name="namaMapel" required value="${m.namaMapel || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Guru Pengampu *</label>
+              <input type="text" name="namaGuru" required value="${m.namaGuru || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">KKM (0-100) *</label>
+              <input type="number" name="kkm" min="0" max="100" required value="${m.kkm ?? 75}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Batal</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold">Simpan Perubahan</button>
+          </div>
+        </form>
+      `);
+    };
+
+    window.saveEditMapelForm = async function (e, mapelId) {
+      e.preventDefault();
+      const f = e.target;
+      const kelasObj = state.kelas.find(k => k.id === f.kelasId.value);
+      if (!kelasObj) return showToast('Pilih kelas terlebih dahulu!', 'error');
+
+      const payload = {
+        namaMapel: f.namaMapel.value.trim(),
+        kategori: kelasObj.kategori,
+        jenjang: kelasObj.jenjang || '',
+        kelasId: kelasObj.id,
+        namaGuru: f.namaGuru.value.trim(),
+        kkm: Number(f.kkm.value) || 75
+      };
+      await saveData('mata_pelajaran', 'mataPelajaran', payload, mapelId);
+      await logAudit('Edit Mapel', `Memperbarui mapel ${payload.namaMapel} (${kelasObj.namaKelas})`);
+      closeModal();
+      showToast('Perubahan mata pelajaran berhasil disimpan');
     };
 
     function renderMasterMapel() {
@@ -1671,7 +1783,8 @@
                     <td class="p-3 font-extrabold text-slate-900">${m.namaMapel}</td>
                     <td class="p-3">${m.namaGuru || '-'}</td>
                     <td class="p-3 text-center font-bold">${m.kkm}</td>
-                    <td class="p-3 text-right">
+                    <td class="p-3 text-right whitespace-nowrap space-x-1">
+                      <button type="button" onclick="openEditMapelModal('${m.id}')" class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold">Edit</button>
                       <button type="button" onclick="deleteMapel('${m.id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold">Hapus</button>
                     </td>
                   </tr>
