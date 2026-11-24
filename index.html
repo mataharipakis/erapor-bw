@@ -1,0 +1,3423 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>E-Raport Pondok Pesantren & Madrasah Diniyah</title>
+  <meta name="theme-color" content="#065f46" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- PWA Manifest via Data URI -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"E-Raport Pondok Pesantren & Madrasah Diniyah","short_name":"E-Raport Pesantren","start_url":".","display":"standalone","background_color":"#ffffff","theme_color":"#065f46","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2720%27 fill=%27%23065f46%27/%3E%3Ctext x=%2750%27 y=%2765%27 font-size=%2750%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27sans-serif%27 font-weight=%27bold%27%3ER%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}' />
+
+  <!-- Google Fonts: Plus Jakarta Sans & Amiri (untuk nuansa islami formal) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Amiri"', 'serif'],
+          },
+          colors: {
+            emerald: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- SheetJS (XLSX) untuk Impor / Ekspor Excel -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+
+  <!-- Chart.js untuk Grafik Dashboard -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- html2pdf.js untuk Unduh PDF A4 langsung -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    /* Full Page Wrapper agar menutupi elemen bawaan Blogger jika disematkan di widget */
+    #eraport-app-root {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background-color: #f8fafc;
+      z-index: 99999;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #0f172a;
+    }
+
+    /* Glassmorphism Utilities */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+
+    .glass-nav {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Kertas A4 Preview di Layar */
+    .a4-sheet {
+      width: 210mm;
+      min-height: 297mm;
+      background: #ffffff;
+      color: #000000;
+      padding: 12mm 14mm;
+      margin: 0 auto;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+      box-sizing: border-box;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 11pt;
+      line-height: 1.35;
+    }
+
+    .raport-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .raport-table th,
+    .raport-table td {
+      border: 1px solid #000000;
+      padding: 4px 6px;
+      font-size: 10pt;
+    }
+    .raport-table th {
+      background-color: #f3f4f6;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    /* Pengaturan Cetak A4 Portrait (Menyembunyikan seluruh UI aplikasi) */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 8mm 10mm;
+      }
+      body * {
+        visibility: hidden;
+      }
+      #eraport-app-root {
+        position: static !important;
+        overflow: visible !important;
+        height: auto !important;
+        background: #ffffff !important;
+      }
+      #printable-raport-area,
+      #printable-raport-area * {
+        visibility: visible;
+      }
+      #printable-raport-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      .a4-sheet {
+        width: 100%;
+        min-height: auto;
+        padding: 0;
+        margin: 0;
+        box-shadow: none !important;
+        page-break-after: always;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="eraport-app-root">
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[100000] flex flex-col gap-2 max-w-sm w-full pointer-events-none no-print"></div>
+
+    <!-- Modal Container -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[99999] hidden items-center justify-center p-4 no-print">
+      <div id="modal-box" class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 p-6"></div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-view" class="min-h-screen w-full"></div>
+  </div>
+
+  <script type="module">
+    // =========================================================================
+    // KONFIGURASI APLIKASI & SAKLAR MODE (WAJIB DI ATAS)
+    // =========================================================================
+    const IS_PREVIEW = false; // Ubah menjadi false SAAT DEPLOY / PUBLISH agar terhubung murni ke Firebase tanpa data dummy
+
+    // PASTE FIREBASE CONFIG ANDA DI SINI
+    const firebaseConfig = {
+   apiKey: "AIzaSyBLcQBWPQ0nctKgYVupr2D62T9EamuM0DA",
+  authDomain: "erapor-bw.firebaseapp.com",
+  projectId: "erapor-bw",
+  storageBucket: "erapor-bw.firebasestorage.app",
+  messagingSenderId: "845028673605",
+  appId: "1:845028673605:web:78adfd9cfb5a7f7331fb2c"
+    };
+
+    // =========================================================================
+    // SERVICE WORKER DINAMIS (PWA 1 FILE)
+    // =========================================================================
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        const CACHE_NAME = 'eraport-pesantren-v1';
+        self.addEventListener('install', (e) => {
+          self.skipWaiting();
+        });
+        self.addEventListener('activate', (e) => {
+          e.waitUntil(clients.claim());
+        });
+        self.addEventListener('fetch', (e) => {
+          e.respondWith(fetch(e.request).catch(() => new Response('Offline Mode')));
+        });
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(swUrl).catch(() => {});
+    }
+
+    // =========================================================================
+    // INISIALISASI FIREBASE (HANYA AKTIF SAAT IS_PREVIEW === false)
+    // =========================================================================
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      getDoc,
+      getDocs,
+      setDoc,
+      addDoc,
+      updateDoc,
+      deleteDoc,
+      query,
+      where,
+      orderBy,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    let fbApp = null;
+    let fbAuth = null;
+    let fbDb = null;
+    let fbInitError = null;
+
+    if (!IS_PREVIEW) {
+      try {
+        if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey === "API_KEY_ANDA") {
+          throw new Error("firebaseConfig belum diisi dengan kunci proyek Firebase Anda.");
+        }
+        fbApp = initializeApp(firebaseConfig);
+        fbAuth = getAuth(fbApp);
+        fbDb = getFirestore(fbApp);
+      } catch (err) {
+        fbInitError = err.message;
+        console.error("Gagal inisialisasi Firebase:", err);
+      }
+    }
+
+    // =========================================================================
+    // STATE APLIKASI GLOBAL
+    // =========================================================================
+    const defaultSettings = {
+      namaPondok: '',
+      alamatPondok: '',
+      tahunBerdiri: '',
+      namaPengasuh: '',
+      identitasLembaga: '',
+      logoUrl: '',
+      tahunAjaranAktif: '2025/2026',
+      semesterAktif: 'Ganjil',
+      tanggalRaport: new Date().toISOString().split('T')[0],
+      isLocked: false,
+      jumlahNH: 4,
+      bobotNH: 60,
+      bobotNU: 40
+    };
+
+    const state = {
+      currentUser: null, // { id, username, nama, role, refId, email }
+      activeMenu: 'dashboard',
+      mobileDrawerOpen: false,
+      activeMasterTab: 'pondok',
+      selectedKelasKategoriFilter: 'Semua',
+      selectedMapelKategoriFilter: 'Semua',
+      selectedMapelKelasFilter: 'all',
+      selectedSantriProgramFilter: 'Semua',
+      selectedSantriKelasFilter: 'all',
+      selectedSantriSearch: '',
+      selectedPenilaianProgramFilter: 'Semua',
+      selectedPenilaianJenjangFilter: 'Semua',
+      selectedPenilaianKelasFilter: 'all',
+      selectedMapelId: '',
+      selectedAbsensiProgramFilter: 'Semua',
+      selectedAbsensiKelasFilter: 'all',
+      selectedEvaluasiProgramFilter: 'Semua',
+      selectedEvaluasiKelasFilter: 'all',
+      selectedRaportProgramFilter: 'Semua',
+      selectedRaportKelasFilter: 'all',
+      selectedSantriRaportId: '',
+      loginTab: 'portal',
+      settings: { ...defaultSettings },
+      usersPortal: [],
+      santri: [],
+      kelas: [],
+      mataPelajaran: [],
+      penilaian: [],
+      absensiSemester: [],
+      evaluasiRaport: [],
+      auditLogs: [],
+      unsubscribers: []
+    };
+    window.state = state;
+
+    // =========================================================================
+    // DATA DEMO (HANYA DIMUAT JIKA IS_PREVIEW === true)
+    // =========================================================================
+    if (IS_PREVIEW) {
+      state.settings = {
+        namaPondok: 'PONDOK PESANTREN DARUL ULUM AL-ISLAMI',
+        alamatPondok: 'Jl. Pesantren No. 01, Kec. Sukamaju, Kab. Nusantara',
+        tahunBerdiri: '1998',
+        namaPengasuh: 'KH. Ahmad Mudzakkir, M.Pd.I',
+        identitasLembaga: 'NSPP: 510035070123 • Madrasah Diniyah Takmiliyah',
+        logoUrl: '',
+        tahunAjaranAktif: '2025/2026',
+        semesterAktif: 'Ganjil',
+        tanggalRaport: '2025-12-20',
+        isLocked: false,
+        jumlahNH: 4,
+        bobotNH: 60,
+        bobotNU: 40
+      };
+
+      state.usersPortal = [
+        { id: 'u1', username: 'guru1', password: '123', nama: 'Ust. Muhammad Faiz', role: 'guru', refId: 'g1', statusAktif: true },
+        { id: 'u2', username: 'pengasuh', password: '123', nama: 'KH. Ahmad Mudzakkir', role: 'pengasuh', refId: '', statusAktif: true },
+        { id: 'u3', username: '2025001', password: '123', nama: 'Bpk. H. Sulaiman (Wali)', role: 'wali', refId: 's1', statusAktif: true }
+      ];
+
+      state.kelas = [
+        { id: 'k1', namaKelas: '1 Ula Diniyah', kategori: 'Diniyah', jenjang: 'Ula', waliKelas: 'Ust. Muhammad Faiz', tahunAjaran: '2025/2026' },
+        { id: 'k2', namaKelas: 'Juz Amma & Tajwid', kategori: 'Al-Qur\'an', jenjang: 'Dasar', waliKelas: 'Ust. Abdurrahman', tahunAjaran: '2025/2026' },
+        { id: 'k3', namaKelas: 'Nahwu Shorof Dasar', kategori: 'Bahasa Arab', jenjang: 'Ula', waliKelas: 'Ust. Muhammad Faiz', tahunAjaran: '2025/2026' }
+      ];
+
+      state.santri = [
+        {
+          id: 's1',
+          nis: '2025001',
+          nama: 'Ahmad Zaki Al-Mubarok',
+          tempatLahir: 'Malang',
+          tanggalLahir: '2011-05-14',
+          jk: 'L',
+          alamat: 'Jl. Melati No. 12, Malang',
+          namaWali: 'H. Sulaiman',
+          hpWali: '081234567890',
+          tahunMasuk: '2025',
+          status: 'Aktif',
+          kelasDiniyahId: 'k1',
+          kelasQuranId: 'k2',
+          kelasArabId: 'k3'
+        },
+        {
+          id: 's2',
+          nis: '2025002',
+          nama: 'Siti Fatimah Az-Zahra',
+          tempatLahir: 'Pasuruan',
+          tanggalLahir: '2011-09-22',
+          jk: 'P',
+          alamat: 'Dusun Krajan RT 02 RW 01, Pasuruan',
+          namaWali: 'Abdul Karim',
+          hpWali: '085612345678',
+          tahunMasuk: '2025',
+          status: 'Aktif',
+          kelasDiniyahId: 'k1',
+          kelasQuranId: 'k2',
+          kelasArabId: 'k3'
+        }
+      ];
+
+      state.mataPelajaran = [
+        { id: 'm1', namaMapel: 'Fikih (Safinatun Najah)', kategori: 'Diniyah', jenjang: 'Ula', kelasId: 'k1', guruId: 'g1', namaGuru: 'Ust. Muhammad Faiz', kkm: 75, statusAktif: true },
+        { id: 'm2', namaMapel: 'Akidah Akhlak (Aqidatul Awam)', kategori: 'Diniyah', jenjang: 'Ula', kelasId: 'k1', guruId: 'g1', namaGuru: 'Ust. Muhammad Faiz', kkm: 75, statusAktif: true },
+        { id: 'm3', namaMapel: 'Tajwid & Tahsin Al-Qur\'an', kategori: 'Al-Qur\'an', jenjang: 'Dasar', kelasId: 'k2', guruId: 'g2', namaGuru: 'Ust. Abdurrahman', kkm: 80, statusAktif: true },
+        { id: 'm4', namaMapel: 'Nahwu (Al-Ajurumiyah)', kategori: 'Bahasa Arab', jenjang: 'Ula', kelasId: 'k3', guruId: 'g1', namaGuru: 'Ust. Muhammad Faiz', kkm: 75, statusAktif: true }
+      ];
+
+      state.penilaian = [
+        { id: 'p1', tahunAjaran: '2025/2026', semester: 'Ganjil', santriId: 's1', mapelId: 'm1', nh1: 82, nh2: 85, nh3: 80, nh4: 88, nu: 86, nilaiAkhir: 84.7, catatanGuru: 'Sangat baik dalam praktik ibadah' },
+        { id: 'p2', tahunAjaran: '2025/2026', semester: 'Ganjil', santriId: 's1', mapelId: 'm2', nh1: 80, nh2: 84, nh3: 82, nh4: 85, nu: 84, nilaiAkhir: 83.3, catatanGuru: 'Akhlak terpuji & hafalan lancar' },
+        { id: 'p3', tahunAjaran: '2025/2026', semester: 'Ganjil', santriId: 's1', mapelId: 'm3', nh1: 88, nh2: 90, nh3: 87, nh4: 91, nu: 90, nilaiAkhir: 89.4, catatanGuru: 'Makhraj dan tajwid sangat fasih' },
+        { id: 'p4', tahunAjaran: '2025/2026', semester: 'Ganjil', santriId: 's1', mapelId: 'm4', nh1: 78, nh2: 80, nh3: 79, nh4: 82, nu: 81, nilaiAkhir: 80.3, catatanGuru: 'Terus tingkatkan latihan i\'rab' }
+      ];
+
+      state.absensiSemester = [
+        {
+          id: 'a1',
+          tahunAjaran: '2025/2026',
+          semester: 'Ganjil',
+          santriId: 's1',
+          jamaah: { hadir: 145, izin: 2, sakit: 1, alpa: 0 },
+          quran: { hadir: 72, izin: 1, sakit: 1, alpa: 0 },
+          arab: { hadir: 68, izin: 2, sakit: 0, alpa: 0 },
+          diniyah: { hadir: 74, izin: 0, sakit: 1, alpa: 0 }
+        }
+      ];
+
+      state.evaluasiRaport = [
+        {
+          id: 'e1',
+          tahunAjaran: '2025/2026',
+          semester: 'Ganjil',
+          santriId: 's1',
+          catatanPengasuh: 'Ananda menunjukkan kedisiplinan shalat berjamaah yang sangat baik, santun kepada asatidz, dan tekun mutholaah kitab di malam hari. Pertahankan semangat menuntut ilmu.',
+          hasilQuran: 'Lulus',
+          hasilArab: 'Naik',
+          hasilDiniyah: 'Naik',
+          catatanUjian: 'Memenuhi seluruh standar kelulusan semester.',
+          tahunAjaranBerikutnya: '2026/2027',
+          tanggalPenetapan: '2025-12-20',
+          statusSah: true
+        }
+      ];
+
+      state.auditLogs = [
+        { id: 'l1', timestamp: new Date().toLocaleString('id-ID'), user: 'KH. Ahmad Mudzakkir', role: 'pengasuh', aksi: 'Pengesahan Raport', detail: 'Mengesahkan raport Ahmad Zaki Al-Mubarok (2025001)' }
+      ];
+    }
+
+    // =========================================================================
+    // UTILITAS UMUM, TOAST, MODAL, & PERHITUNGAN NILAI
+    // =========================================================================
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const el = document.createElement('div');
+      const colors = {
+        success: 'bg-emerald-800 text-white border-emerald-600',
+        error: 'bg-rose-700 text-white border-rose-500',
+        info: 'bg-slate-800 text-white border-slate-600'
+      };
+      el.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-sm font-medium flex items-center justify-between gap-3 transition-all duration-300 ${colors[type] || colors.info}`;
+      el.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="text-white/80 hover:text-white font-bold">&times;</button>`;
+      container.appendChild(el);
+      setTimeout(() => {
+        if (el.parentElement) el.remove();
+      }, 3800);
+    }
+
+    function openModal(htmlContent) {
+      const backdrop = document.getElementById('modal-backdrop');
+      const box = document.getElementById('modal-box');
+      if (!backdrop || !box) return;
+      box.innerHTML = htmlContent;
+      backdrop.classList.remove('hidden');
+      backdrop.classList.add('flex');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    window.closeModal = function () {
+      const backdrop = document.getElementById('modal-backdrop');
+      if (!backdrop) return;
+      backdrop.classList.add('hidden');
+      backdrop.classList.remove('flex');
+    };
+
+    function hitungNilaiAkhir(nh1, nh2, nh3, nh4, nu) {
+      const jmlNH = Number(state.settings.jumlahNH) || 4;
+      const bNH = (Number(state.settings.bobotNH) || 60) / 100;
+      const bNU = (Number(state.settings.bobotNU) || 40) / 100;
+      const nhArr = [Number(nh1) || 0, Number(nh2) || 0, Number(nh3) || 0, Number(nh4) || 0].slice(0, jmlNH);
+      const rataNH = nhArr.reduce((acc, v) => acc + v, 0) / jmlNH;
+      const akhir = rataNH * bNH + (Number(nu) || 0) * bNU;
+      return Math.round(akhir * 10) / 10;
+    }
+
+    function getKelasName(kelasId) {
+      const k = state.kelas.find(item => item.id === kelasId);
+      return k ? k.namaKelas : '-';
+    }
+
+    async function logAudit(aksi, detail) {
+      const entry = {
+        timestamp: new Date().toLocaleString('id-ID'),
+        user: state.currentUser ? state.currentUser.nama : 'Sistem',
+        role: state.currentUser ? state.currentUser.role : 'system',
+        aksi,
+        detail
+      };
+      if (IS_PREVIEW) {
+        state.auditLogs.unshift({ id: 'log_' + Date.now(), ...entry });
+      } else if (fbDb) {
+        try {
+          await addDoc(collection(fbDb, 'audit_logs'), entry);
+        } catch (e) {
+          console.error('Audit log error:', e);
+        }
+      }
+    }
+
+    // =========================================================================
+    // SINKRONISASI FIRESTORE REAL-TIME (HANYA SAAT IS_PREVIEW === false)
+    // =========================================================================
+    function clearFirestoreSync() {
+      state.unsubscribers.forEach(unsub => {
+        if (typeof unsub === 'function') unsub();
+      });
+      state.unsubscribers = [];
+    }
+
+    function startFirestoreSync() {
+      if (IS_PREVIEW || !fbDb) return;
+      clearFirestoreSync();
+
+      const bindCol = (colName, stateKey) => {
+        const unsub = onSnapshot(collection(fbDb, colName), (snap) => {
+          state[stateKey] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderApp();
+        }, (err) => console.error(`Sync ${colName} error:`, err));
+        state.unsubscribers.push(unsub);
+      };
+
+      const unsubSettings = onSnapshot(doc(fbDb, 'settings_pondok', 'profil'), (docSnap) => {
+        if (docSnap.exists()) {
+          state.settings = { ...defaultSettings, ...docSnap.data() };
+        } else {
+          state.settings = { ...defaultSettings };
+        }
+        renderApp();
+      });
+      state.unsubscribers.push(unsubSettings);
+
+      bindCol('users_portal', 'usersPortal');
+      bindCol('santri', 'santri');
+      bindCol('kelas', 'kelas');
+      bindCol('mata_pelajaran', 'mataPelajaran');
+      bindCol('penilaian', 'penilaian');
+      bindCol('absensi_semester', 'absensiSemester');
+      bindCol('evaluasi_raport', 'evaluasiRaport');
+      bindCol('audit_logs', 'auditLogs');
+    }
+
+    // =========================================================================
+    // OPERASI CRUD UNIFIED (IN-MEMORY SAAT PREVIEW, FIRESTORE SAAT PRODUKSI)
+    // =========================================================================
+    async function saveData(colName, stateKey, dataObj, docId = null) {
+      if (IS_PREVIEW) {
+        if (docId) {
+          const idx = state[stateKey].findIndex(item => item.id === docId);
+          if (idx > -1) state[stateKey][idx] = { ...state[stateKey][idx], ...dataObj };
+          else state[stateKey].push({ id: docId, ...dataObj });
+        } else {
+          const newId = colName.slice(0, 2) + '_' + Date.now() + '_' + Math.floor(Math.random() * 100);
+          state[stateKey].push({ id: newId, ...dataObj });
+        }
+        renderApp();
+        return true;
+      } else {
+        if (!fbDb) return false;
+        try {
+          if (docId) {
+            await setDoc(doc(fbDb, colName, docId), dataObj, { merge: true });
+          } else {
+            await addDoc(collection(fbDb, colName), dataObj);
+          }
+          return true;
+        } catch (err) {
+          showToast('Gagal menyimpan ke Firestore: ' + err.message, 'error');
+          return false;
+        }
+      }
+    }
+
+    async function removeData(colName, stateKey, docId) {
+      if (IS_PREVIEW) {
+        state[stateKey] = state[stateKey].filter(item => item.id !== docId);
+        renderApp();
+        return true;
+      } else {
+        if (!fbDb) return false;
+        try {
+          await deleteDoc(doc(fbDb, colName, docId));
+          return true;
+        } catch (err) {
+          showToast('Gagal menghapus data: ' + err.message, 'error');
+          return false;
+        }
+      }
+    }
+
+    // =========================================================================
+    // AUTENTIKASI HYBRID (FIREBASE AUTH UNTUK ADMIN, FIRESTORE UNTUK PORTAL)
+    // =========================================================================
+    window.switchLoginTab = function (tab) {
+      state.loginTab = tab;
+      renderApp();
+    };
+
+    window.handleLoginSubmit = async function (e) {
+      e.preventDefault();
+      const form = e.target;
+
+      if (state.loginTab === 'admin') {
+        const email = form.email.value.trim();
+        const password = form.password.value;
+
+        if (IS_PREVIEW) {
+          if (email === 'admin@pesantren.id' && password === 'admin123') {
+            state.currentUser = {
+              id: 'admin_demo',
+              username: email,
+              nama: 'Super Admin Pondok',
+              role: 'super_admin',
+              refId: ''
+            };
+            showToast('Berhasil masuk sebagai Super Admin (Mode Preview)');
+            renderApp();
+          } else {
+            showToast('Email atau Password Admin demo salah!', 'error');
+          }
+          return;
+        }
+
+        try {
+          const cred = await signInWithEmailAndPassword(fbAuth, email, password);
+          state.currentUser = {
+            id: cred.user.uid,
+            username: cred.user.email,
+            nama: cred.user.displayName || 'Administrator Pondok',
+            role: 'super_admin',
+            refId: ''
+          };
+          startFirestoreSync();
+          await logAudit('Login Admin', `Admin ${email} masuk ke sistem`);
+          showToast('Selamat datang, Administrator!');
+          renderApp();
+        } catch (err) {
+          showToast('Autentikasi Firebase gagal: ' + err.message, 'error');
+        }
+      } else {
+        const username = form.username.value.trim();
+        const password = form.password.value;
+
+        if (IS_PREVIEW) {
+          const found = state.usersPortal.find(u => u.username === username && u.password === password && u.statusAktif);
+          if (found) {
+            state.currentUser = { ...found };
+            if (found.role === 'wali') state.activeMenu = 'cetak_raport';
+            showToast(`Selamat datang, ${found.nama}`);
+            renderApp();
+          } else {
+            showToast('Username/NIS atau Password tidak ditemukan!', 'error');
+          }
+          return;
+        }
+
+        if (!fbDb) {
+          showToast('Koneksi database Firebase belum dikonfigurasi.', 'error');
+          return;
+        }
+
+        try {
+          const q = query(
+            collection(fbDb, 'users_portal'),
+            where('username', '==', username),
+            where('password', '==', password)
+          );
+          const snap = await getDocs(q);
+          if (snap.empty) {
+            showToast('Username/NIS atau Password tidak valid atau akun belum didaftarkan Admin.', 'error');
+            return;
+          }
+          const userDoc = snap.docs[0];
+          const userData = userDoc.data();
+          if (userData.statusAktif === false) {
+            showToast('Akun Anda dinonaktifkan oleh Administrator.', 'error');
+            return;
+          }
+          state.currentUser = { id: userDoc.id, ...userData };
+          if (userData.role === 'wali') state.activeMenu = 'cetak_raport';
+          startFirestoreSync();
+          await logAudit('Login Portal', `${userData.nama} (${userData.role}) masuk ke portal`);
+          showToast(`Selamat datang, ${userData.nama}`);
+          renderApp();
+        } catch (err) {
+          showToast('Gagal memverifikasi akun portal: ' + err.message, 'error');
+        }
+      }
+    };
+
+    window.handleLogout = async function () {
+      if (!IS_PREVIEW && fbAuth && state.currentUser?.role === 'super_admin') {
+        try {
+          await signOut(fbAuth);
+        } catch (e) {}
+      }
+      clearFirestoreSync();
+      state.currentUser = null;
+      state.activeMenu = 'dashboard';
+      state.mobileDrawerOpen = false;
+      renderApp();
+    };
+    window.toggleMobileDrawer = function (forceState = null) {
+      state.mobileDrawerOpen = forceState !== null ? forceState : !state.mobileDrawerOpen;
+      renderApp();
+    };
+
+    window.navigateMenu = function (menuId) {
+      state.activeMenu = menuId;
+      state.mobileDrawerOpen = false;
+      renderApp();
+    };
+
+    // =========================================================================
+    // EKSPOR & IMPOR EXCEL DATA SANTRI
+    // =========================================================================
+    window.downloadTemplateSantri = function () {
+      const rows = state.santri.length > 0
+        ? state.santri.map(s => ({
+            NIS: s.nis,
+            Nama_Santri: s.nama,
+            Jenis_Kelamin: s.jk || 'L',
+            Kelas_Diniyah: getKelasName(s.kelasDiniyahId) === '-' ? '' : getKelasName(s.kelasDiniyahId),
+            Kelas_Quran: getKelasName(s.kelasQuranId) === '-' ? '' : getKelasName(s.kelasQuranId),
+            Kelas_Bahasa_Arab: getKelasName(s.kelasArabId) === '-' ? '' : getKelasName(s.kelasArabId),
+            Nama_Wali: s.namaWali || '',
+            No_HP_Wali: s.hpWali || '',
+            Status: s.status || 'Aktif'
+          }))
+        : [{
+            NIS: '2025001',
+            Nama_Santri: 'Contoh Nama Santri',
+            Jenis_Kelamin: 'L',
+            Kelas_Diniyah: state.kelas.find(k => k.kategori === 'Diniyah')?.namaKelas || '',
+            Kelas_Quran: state.kelas.find(k => k.kategori === "Al-Qur'an")?.namaKelas || '',
+            Kelas_Bahasa_Arab: state.kelas.find(k => k.kategori === 'Bahasa Arab')?.namaKelas || '',
+            Nama_Wali: 'Nama Wali',
+            No_HP_Wali: '08123456789',
+            Status: 'Aktif'
+          }];
+
+      const refKelas = state.kelas.map(k => ({
+        Kategori: k.kategori,
+        Jenjang: k.jenjang || '',
+        Nama_Kelas: k.namaKelas
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const wsSantri = XLSX.utils.json_to_sheet(rows);
+      const wsKelas = XLSX.utils.json_to_sheet(refKelas.length ? refKelas : [{ Kategori: 'Diniyah', Jenjang: 'Ula', Nama_Kelas: '1 Ula Diniyah' }]);
+      XLSX.utils.book_append_sheet(wb, wsSantri, 'Data_Santri');
+      XLSX.utils.book_append_sheet(wb, wsKelas, 'Referensi_Kelas');
+      XLSX.writeFile(wb, 'Template_Data_Santri_Pesantren.xlsx');
+      showToast('Template Excel Data Santri berhasil diunduh');
+    };
+
+    window.importSantriExcel = async function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
+        let imported = 0;
+
+        for (const r of rows) {
+          if (!r.NIS || !r.Nama_Santri) continue;
+          const findKelasId = (kat, name) => {
+            if (!name) return '';
+            const found = state.kelas.find(k => k.kategori === kat && k.namaKelas.toLowerCase() === String(name).trim().toLowerCase());
+            return found ? found.id : '';
+          };
+          const existing = state.santri.find(s => String(s.nis) === String(r.NIS).trim());
+          const payload = {
+            nis: String(r.NIS).trim(),
+            nama: String(r.Nama_Santri).trim(),
+            jk: String(r.Jenis_Kelamin || 'L').trim().toUpperCase(),
+            kelasDiniyahId: findKelasId('Diniyah', r.Kelas_Diniyah),
+            kelasQuranId: findKelasId("Al-Qur'an", r.Kelas_Quran),
+            kelasArabId: findKelasId('Bahasa Arab', r.Kelas_Bahasa_Arab),
+            namaWali: String(r.Nama_Wali || '').trim(),
+            hpWali: String(r.No_HP_Wali || '').trim(),
+            status: String(r.Status || 'Aktif').trim()
+          };
+          await saveData('santri', 'santri', payload, existing ? existing.id : null);
+          imported++;
+        }
+        await logAudit('Impor Santri', `Mengimpor ${imported} data santri via Excel`);
+        showToast(`Berhasil mengimpor ${imported} data santri`);
+      } catch (err) {
+        showToast('Gagal membaca file Excel: ' + err.message, 'error');
+      } finally {
+        event.target.value = '';
+      }
+    };
+
+    // =========================================================================
+    // EKSPOR & IMPOR EXCEL PENILAIAN
+    // =========================================================================
+    window.exportNilaiExcel = function () {
+      const mapel = state.mataPelajaran.find(m => m.id === state.selectedMapelId);
+      if (!mapel) return showToast('Pilih mata pelajaran terlebih dahulu', 'error');
+
+      const santriList = state.santri.filter(s => {
+        if (s.status !== 'Aktif') return false;
+        if (mapel.kategori === 'Diniyah') return s.kelasDiniyahId === mapel.kelasId;
+        if (mapel.kategori === "Al-Qur'an") return s.kelasQuranId === mapel.kelasId;
+        if (mapel.kategori === 'Bahasa Arab') return s.kelasArabId === mapel.kelasId;
+        return true;
+      });
+
+      const rows = santriList.map(s => {
+        const n = state.penilaian.find(p =>
+          p.santriId === s.id &&
+          p.mapelId === mapel.id &&
+          p.tahunAjaran === state.settings.tahunAjaranAktif &&
+          p.semester === state.settings.semesterAktif
+        ) || {};
+        return {
+          NIS: s.nis,
+          Nama_Santri: s.nama,
+          NH1: n.nh1 ?? '',
+          NH2: n.nh2 ?? '',
+          NH3: n.nh3 ?? '',
+          NH4: n.nh4 ?? '',
+          NU: n.nu ?? '',
+          Catatan_Guru: n.catatanGuru || ''
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Nilai_Santri');
+      XLSX.writeFile(wb, `Template_Nilai_${mapel.namaMapel.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+      showToast('Template Excel nilai berhasil diunduh');
+    };
+
+    window.importNilaiExcel = async function (event) {
+      if (state.settings.isLocked) return showToast('Raport sedang dikunci!', 'error');
+      const mapel = state.mataPelajaran.find(m => m.id === state.selectedMapelId);
+      if (!mapel) return showToast('Pilih mata pelajaran terlebih dahulu', 'error');
+
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
+        let count = 0;
+
+        for (const r of rows) {
+          const santri = state.santri.find(s => String(s.nis) === String(r.NIS).trim());
+          if (!santri) continue;
+          const nh1 = Number(r.NH1) || 0;
+          const nh2 = Number(r.NH2) || 0;
+          const nh3 = Number(r.NH3) || 0;
+          const nh4 = Number(r.NH4) || 0;
+          const nu = Number(r.NU) || 0;
+          const nilaiAkhir = hitungNilaiAkhir(nh1, nh2, nh3, nh4, nu);
+
+          const existing = state.penilaian.find(p =>
+            p.santriId === santri.id &&
+            p.mapelId === mapel.id &&
+            p.tahunAjaran === state.settings.tahunAjaranAktif &&
+            p.semester === state.settings.semesterAktif
+          );
+
+          await saveData('penilaian', 'penilaian', {
+            tahunAjaran: state.settings.tahunAjaranAktif,
+            semester: state.settings.semesterAktif,
+            santriId: santri.id,
+            mapelId: mapel.id,
+            nh1, nh2, nh3, nh4, nu,
+            nilaiAkhir,
+            catatanGuru: String(r.Catatan_Guru || '').trim()
+          }, existing ? existing.id : null);
+          count++;
+        }
+        await logAudit('Impor Nilai', `Mengimpor ${count} nilai mapel ${mapel.namaMapel}`);
+        showToast(`Berhasil mengimpor ${count} nilai santri`);
+      } catch (err) {
+        showToast('Gagal mengimpor Excel nilai: ' + err.message, 'error');
+      } finally {
+        event.target.value = '';
+      }
+    };
+
+    // =========================================================================
+    // EKSPOR & IMPOR EXCEL REKAP ABSENSI
+    // =========================================================================
+    function getFilteredSantriByProgramKelas(progFilter, kelasFilter) {
+      return state.santri.filter(s => {
+        if (s.status !== 'Aktif') return false;
+        if (progFilter === 'Diniyah') {
+          return kelasFilter === 'all' ? Boolean(s.kelasDiniyahId) : s.kelasDiniyahId === kelasFilter;
+        }
+        if (progFilter === "Al-Qur'an") {
+          return kelasFilter === 'all' ? Boolean(s.kelasQuranId) : s.kelasQuranId === kelasFilter;
+        }
+        if (progFilter === 'Bahasa Arab') {
+          return kelasFilter === 'all' ? Boolean(s.kelasArabId) : s.kelasArabId === kelasFilter;
+        }
+        return true;
+      });
+    }
+
+    window.exportAbsensiExcel = function () {
+      const list = getFilteredSantriByProgramKelas(state.selectedAbsensiProgramFilter, state.selectedAbsensiKelasFilter);
+      if (list.length === 0) return showToast('Tidak ada santri pada filter kelas ini', 'error');
+
+      const rows = list.map(s => {
+        const a = state.absensiSemester.find(item =>
+          item.santriId === s.id &&
+          item.tahunAjaran === state.settings.tahunAjaranAktif &&
+          item.semester === state.settings.semesterAktif
+        ) || {
+          jamaah: { hadir: 0, izin: 0, sakit: 0, alpa: 0 },
+          quran: { hadir: 0, izin: 0, sakit: 0, alpa: 0 },
+          arab: { hadir: 0, izin: 0, sakit: 0, alpa: 0 },
+          diniyah: { hadir: 0, izin: 0, sakit: 0, alpa: 0 }
+        };
+        return {
+          NIS: s.nis,
+          Nama_Santri: s.nama,
+          Jamaah_Hadir: a.jamaah?.hadir || 0,
+          Jamaah_Izin: a.jamaah?.izin || 0,
+          Jamaah_Sakit: a.jamaah?.sakit || 0,
+          Jamaah_Alpa: a.jamaah?.alpa || 0,
+          Quran_Hadir: a.quran?.hadir || 0,
+          Quran_Izin: a.quran?.izin || 0,
+          Quran_Sakit: a.quran?.sakit || 0,
+          Quran_Alpa: a.quran?.alpa || 0,
+          Arab_Hadir: a.arab?.hadir || 0,
+          Arab_Izin: a.arab?.izin || 0,
+          Arab_Sakit: a.arab?.sakit || 0,
+          Arab_Alpa: a.arab?.alpa || 0,
+          Diniyah_Hadir: a.diniyah?.hadir || 0,
+          Diniyah_Izin: a.diniyah?.izin || 0,
+          Diniyah_Sakit: a.diniyah?.sakit || 0,
+          Diniyah_Alpa: a.diniyah?.alpa || 0
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Rekap_Absensi');
+      XLSX.writeFile(wb, `Template_Absensi_${state.settings.semesterAktif}.xlsx`);
+      showToast('Template Excel Rekap Absensi berhasil diunduh');
+    };
+
+    window.importAbsensiExcel = async function (event) {
+      if (state.settings.isLocked) return showToast('Raport sedang dikunci!', 'error');
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
+        let count = 0;
+
+        for (const r of rows) {
+          const santri = state.santri.find(s => String(s.nis) === String(r.NIS).trim());
+          if (!santri) continue;
+          const existing = state.absensiSemester.find(a =>
+            a.santriId === santri.id &&
+            a.tahunAjaran === state.settings.tahunAjaranAktif &&
+            a.semester === state.settings.semesterAktif
+          );
+          await saveData('absensi_semester', 'absensiSemester', {
+            tahunAjaran: state.settings.tahunAjaranAktif,
+            semester: state.settings.semesterAktif,
+            santriId: santri.id,
+            jamaah: {
+              hadir: Number(r.Jamaah_Hadir) || 0,
+              izin: Number(r.Jamaah_Izin) || 0,
+              sakit: Number(r.Jamaah_Sakit) || 0,
+              alpa: Number(r.Jamaah_Alpa) || 0
+            },
+            quran: {
+              hadir: Number(r.Quran_Hadir) || 0,
+              izin: Number(r.Quran_Izin) || 0,
+              sakit: Number(r.Quran_Sakit) || 0,
+              alpa: Number(r.Quran_Alpa) || 0
+            },
+            arab: {
+              hadir: Number(r.Arab_Hadir) || 0,
+              izin: Number(r.Arab_Izin) || 0,
+              sakit: Number(r.Arab_Sakit) || 0,
+              alpa: Number(r.Arab_Alpa) || 0
+            },
+            diniyah: {
+              hadir: Number(r.Diniyah_Hadir) || 0,
+              izin: Number(r.Diniyah_Izin) || 0,
+              sakit: Number(r.Diniyah_Sakit) || 0,
+              alpa: Number(r.Diniyah_Alpa) || 0
+            }
+          }, existing ? existing.id : null);
+          count++;
+        }
+        await logAudit('Impor Absensi', `Mengimpor ${count} rekap absensi santri`);
+        showToast(`Berhasil mengimpor ${count} rekap absensi`);
+      } catch (err) {
+        showToast('Gagal mengimpor Excel absensi: ' + err.message, 'error');
+      } finally {
+        event.target.value = '';
+      }
+    };
+
+    // =========================================================================
+    // EKSPOR & IMPOR EXCEL CATATAN PENGASUH & KENAIKAN
+    // =========================================================================
+    window.exportEvaluasiExcel = function () {
+      const list = getFilteredSantriByProgramKelas(state.selectedEvaluasiProgramFilter, state.selectedEvaluasiKelasFilter);
+      if (list.length === 0) return showToast('Tidak ada santri pada filter kelas ini', 'error');
+
+      const rows = list.map(s => {
+        const ev = state.evaluasiRaport.find(item =>
+          item.santriId === s.id &&
+          item.tahunAjaran === state.settings.tahunAjaranAktif &&
+          item.semester === state.settings.semesterAktif
+        ) || {};
+        return {
+          NIS: s.nis,
+          Nama_Santri: s.nama,
+          Catatan_Pengasuh: ev.catatanPengasuh || '',
+          Hasil_Ujian_Quran: ev.hasilQuran || 'Lulus',
+          Hasil_Ujian_Arab: ev.hasilArab || 'Naik',
+          Hasil_Ujian_Diniyah: ev.hasilDiniyah || 'Naik',
+          Tahun_Ajaran_Berikutnya: ev.tahunAjaranBerikutnya || '2026/2027',
+          Status_Sah: ev.statusSah ? 'SAH' : 'BELUM'
+        };
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Catatan_Pengasuh');
+      XLSX.writeFile(wb, `Template_Catatan_Pengasuh_${state.settings.semesterAktif}.xlsx`);
+      showToast('Template Excel Catatan Pengasuh berhasil diunduh');
+    };
+
+    window.importEvaluasiExcel = async function (event) {
+      if (state.settings.isLocked) return showToast('Raport sedang dikunci!', 'error');
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf);
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws);
+        let count = 0;
+
+        for (const r of rows) {
+          const santri = state.santri.find(s => String(s.nis) === String(r.NIS).trim());
+          if (!santri) continue;
+          const existing = state.evaluasiRaport.find(ev =>
+            ev.santriId === santri.id &&
+            ev.tahunAjaran === state.settings.tahunAjaranAktif &&
+            ev.semester === state.settings.semesterAktif
+          );
+          await saveData('evaluasi_raport', 'evaluasiRaport', {
+            tahunAjaran: state.settings.tahunAjaranAktif,
+            semester: state.settings.semesterAktif,
+            santriId: santri.id,
+            catatanPengasuh: String(r.Catatan_Pengasuh || '').trim(),
+            hasilQuran: String(r.Hasil_Ujian_Quran || 'Lulus').trim(),
+            hasilArab: String(r.Hasil_Ujian_Arab || 'Naik').trim(),
+            hasilDiniyah: String(r.Hasil_Ujian_Diniyah || 'Naik').trim(),
+            tahunAjaranBerikutnya: String(r.Tahun_Ajaran_Berikutnya || '2026/2027').trim(),
+            tanggalPenetapan: state.settings.tanggalRaport,
+            statusSah: String(r.Status_Sah || '').trim().toUpperCase() === 'SAH'
+          }, existing ? existing.id : null);
+          count++;
+        }
+        await logAudit('Impor Catatan Pengasuh', `Mengimpor ${count} evaluasi pengasuh`);
+        showToast(`Berhasil mengimpor ${count} catatan pengasuh`);
+      } catch (err) {
+        showToast('Gagal mengimpor Excel pengasuh: ' + err.message, 'error');
+      } finally {
+        event.target.value = '';
+      }
+    };
+
+    // =========================================================================
+    // MODUL 1: DASHBOARD & GRAFIK ANALITIK
+    // =========================================================================
+    let chartNilaiInstance = null;
+    let chartAbsensiInstance = null;
+
+    function initDashboardCharts() {
+      if (typeof Chart === 'undefined') return;
+      const ctxNilai = document.getElementById('chart-nilai-mapel');
+      const ctxAbsen = document.getElementById('chart-rekap-absensi');
+
+      if (ctxNilai) {
+        if (chartNilaiInstance) chartNilaiInstance.destroy();
+        const activeMapel = state.mataPelajaran.filter(m => m.statusAktif);
+        const labels = activeMapel.map(m => m.namaMapel.length > 18 ? m.namaMapel.slice(0, 18) + '…' : m.namaMapel);
+        const avgData = activeMapel.map(m => {
+          const vals = state.penilaian.filter(p =>
+            p.mapelId === m.id &&
+            p.tahunAjaran === state.settings.tahunAjaranAktif &&
+            p.semester === state.settings.semesterAktif
+          ).map(p => Number(p.nilaiAkhir) || 0);
+          if (!vals.length) return 0;
+          return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+        });
+        const kkmData = activeMapel.map(m => Number(m.kkm) || 75);
+
+        chartNilaiInstance = new Chart(ctxNilai, {
+          type: 'bar',
+          data: {
+            labels: labels.length ? labels : ['Belum ada mapel'],
+            datasets: [
+              {
+                label: 'Rata-rata Nilai Akhir',
+                data: avgData.length ? avgData : [0],
+                backgroundColor: '#059669',
+                borderRadius: 6
+              },
+              {
+                label: 'Standar KKM',
+                data: kkmData.length ? kkmData : [75],
+                backgroundColor: '#cbd5e1',
+                borderRadius: 6
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 100 } }
+          }
+        });
+      }
+
+      if (ctxAbsen) {
+        if (chartAbsensiInstance) chartAbsensiInstance.destroy();
+        let totHadir = 0, totIzin = 0, totSakit = 0, totAlpa = 0;
+        state.absensiSemester
+          .filter(a => a.tahunAjaran === state.settings.tahunAjaranAktif && a.semester === state.settings.semesterAktif)
+          .forEach(a => {
+            ['jamaah', 'quran', 'arab', 'diniyah'].forEach(cat => {
+              totHadir += Number(a[cat]?.hadir) || 0;
+              totIzin += Number(a[cat]?.izin) || 0;
+              totSakit += Number(a[cat]?.sakit) || 0;
+              totAlpa += Number(a[cat]?.alpa) || 0;
+            });
+          });
+
+        chartAbsensiInstance = new Chart(ctxAbsen, {
+          type: 'doughnut',
+          data: {
+            labels: ['Hadir', 'Izin', 'Sakit', 'Alpa'],
+            datasets: [{
+              data: (totHadir + totIzin + totSakit + totAlpa) > 0 ? [totHadir, totIzin, totSakit, totAlpa] : [1, 0, 0, 0],
+              backgroundColor: ['#059669', '#0284c7', '#f59e0b', '#e11d48'],
+              borderWidth: 2
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } }
+          }
+        });
+      }
+    }
+
+    function renderDashboard() {
+      const totalSantri = state.santri.length;
+      const santriAktif = state.santri.filter(s => s.status === 'Aktif');
+      const totalKelas = state.kelas.length;
+      const totalMapel = state.mataPelajaran.filter(m => m.statusAktif).length;
+      const raportSahCount = state.evaluasiRaport.filter(e =>
+        e.tahunAjaran === state.settings.tahunAjaranAktif &&
+        e.semester === state.settings.semesterAktif &&
+        e.statusSah
+      ).length;
+      const raportBelumCount = Math.max(0, santriAktif.length - raportSahCount);
+
+      const notifList = [];
+      santriAktif.forEach(s => {
+        const nilaiSantri = state.penilaian.filter(p =>
+          p.santriId === s.id &&
+          p.tahunAjaran === state.settings.tahunAjaranAktif &&
+          p.semester === state.settings.semesterAktif
+        );
+        if (nilaiSantri.length === 0) {
+          notifList.push({ type: 'warn', text: `Santri ${s.nama} (${s.nis}) belum memiliki nilai semester ini.` });
+        }
+        const ev = state.evaluasiRaport.find(e =>
+          e.santriId === s.id &&
+          e.tahunAjaran === state.settings.tahunAjaranAktif &&
+          e.semester === state.settings.semesterAktif
+        );
+        if (!ev || !ev.statusSah) {
+          notifList.push({ type: 'info', text: `Raport ${s.nama} menunggu catatan/pengesahan Pengasuh.` });
+        }
+      });
+
+      return `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl md:text-2xl font-extrabold text-slate-900">Dashboard Akademik & Kepesantrenan</h1>
+              <p class="text-xs md:text-sm text-slate-500">${state.settings.namaPondok || 'Pondok Pesantren & Madrasah Diniyah'} • Tahun Ajaran ${state.settings.tahunAjaranAktif} (${state.settings.semesterAktif})</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-3 py-1.5 rounded-xl text-xs font-bold ${state.settings.isLocked ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}">
+                ${state.settings.isLocked ? 'Status: Raport Dikunci' : 'Status: Input Nilai Dibuka'}
+              </span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <div class="glass-panel rounded-2xl p-4 shadow-xs">
+              <div class="text-xs font-semibold text-slate-500">Santri Aktif / Total</div>
+              <div class="text-2xl font-extrabold text-emerald-800 mt-1">${santriAktif.length} <span class="text-sm font-medium text-slate-400">/ ${totalSantri}</span></div>
+            </div>
+            <div class="glass-panel rounded-2xl p-4 shadow-xs">
+              <div class="text-xs font-semibold text-slate-500">Kelas & Mata Pelajaran</div>
+              <div class="text-2xl font-extrabold text-slate-800 mt-1">${totalKelas} <span class="text-xs font-semibold text-slate-400">Kelas</span> • ${totalMapel} <span class="text-xs font-semibold text-slate-400">Mapel</span></div>
+            </div>
+            <div class="glass-panel rounded-2xl p-4 shadow-xs">
+              <div class="text-xs font-semibold text-slate-500">Raport Siap Cetak (Sah)</div>
+              <div class="text-2xl font-extrabold text-emerald-700 mt-1">${raportSahCount} <span class="text-xs font-medium text-slate-400">Santri</span></div>
+            </div>
+            <div class="glass-panel rounded-2xl p-4 shadow-xs">
+              <div class="text-xs font-semibold text-slate-500">Raport Belum Selesai</div>
+              <div class="text-2xl font-extrabold text-amber-600 mt-1">${raportBelumCount} <span class="text-xs font-medium text-slate-400">Santri</span></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div class="lg:col-span-2 glass-panel rounded-2xl p-5 shadow-xs">
+              <h2 class="text-sm font-extrabold text-slate-800 mb-3">Grafik Rata-rata Nilai Akhir vs KKM per Mata Pelajaran</h2>
+              <div class="h-64 w-full">
+                <canvas id="chart-nilai-mapel"></canvas>
+              </div>
+            </div>
+            <div class="glass-panel rounded-2xl p-5 shadow-xs">
+              <h2 class="text-sm font-extrabold text-slate-800 mb-3">Statistik Kehadiran Semester</h2>
+              <div class="h-64 w-full">
+                <canvas id="chart-rekap-absensi"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-panel rounded-2xl p-5 shadow-xs">
+            <h2 class="text-sm font-extrabold text-slate-800 mb-3 flex items-center gap-2">
+              <i data-lucide="bell-ring" class="w-4 h-4 text-amber-600"></i> Notifikasi & Status Kelengkapan Raport
+            </h2>
+            ${notifList.length === 0 ? `
+              <div class="p-4 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-semibold">
+                Seluruh data penilaian dan pengesahan raport santri aktif telah lengkap.
+              </div>
+            ` : `
+              <div class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                ${notifList.slice(0, 12).map(n => `
+                  <div class="px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center gap-2.5 ${n.type === 'warn' ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-slate-100 text-slate-700'}">
+                    <span class="w-2 h-2 rounded-full ${n.type === 'warn' ? 'bg-amber-500' : 'bg-sky-500'} shrink-0"></span>
+                    <span>${n.text}</span>
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // MODUL 2: DATA MASTER (URUTAN ALUR: 1. PONDOK -> 2. KELAS -> 3. MAPEL -> 4. SANTRI)
+    // =========================================================================
+    window.switchMasterTab = function (tab) {
+      state.activeMasterTab = tab;
+      renderApp();
+    };
+
+    window.savePondokSettings = async function (e) {
+      e.preventDefault();
+      const f = e.target;
+      const bNH = Number(f.bobotNH.value) || 0;
+      const bNU = Number(f.bobotNU.value) || 0;
+      if (bNH + bNU !== 100) {
+        return showToast('Total Bobot NH + Bobot NU harus sama dengan 100%!', 'error');
+      }
+      const updated = {
+        namaPondok: f.namaPondok.value.trim(),
+        alamatPondok: f.alamatPondok.value.trim(),
+        tahunBerdiri: f.tahunBerdiri.value.trim(),
+        namaPengasuh: f.namaPengasuh.value.trim(),
+        identitasLembaga: f.identitasLembaga.value.trim(),
+        logoUrl: f.logoUrl.value.trim(),
+        tahunAjaranAktif: f.tahunAjaranAktif.value.trim(),
+        semesterAktif: f.semesterAktif.value,
+        tanggalRaport: f.tanggalRaport.value,
+        isLocked: f.isLocked.checked,
+        jumlahNH: Number(f.jumlahNH.value) || 4,
+        bobotNH: bNH,
+        bobotNU: bNU
+      };
+      if (IS_PREVIEW) {
+        state.settings = updated;
+        renderApp();
+      } else if (fbDb) {
+        await setDoc(doc(fbDb, 'settings_pondok', 'profil'), updated, { merge: true });
+      }
+      await logAudit('Update Pengaturan Pondok', 'Memperbarui profil pondok & konfigurasi nilai');
+      showToast('Identitas Pondok & Konfigurasi Raport berhasil disimpan');
+    };
+
+    function renderMasterModule() {
+      const steps = [
+        { id: 'pondok', step: '1', label: 'Identitas Pondok & Bobot', desc: 'Profil pondok, semester & rumus nilai' },
+        { id: 'kelas', step: '2', label: 'Kelas (Diniyah/Qur\'an/Arab)', desc: 'Daftar kelas per program' },
+        { id: 'mapel', step: '3', label: 'Mata Pelajaran & KKM', desc: 'Mapel per kelas & guru pengampu' },
+        { id: 'santri', step: '4', label: 'Data Santri', desc: 'Biodata & penempatan kelas santri' }
+      ];
+
+      let innerHtml = '';
+      if (state.activeMasterTab === 'pondok') innerHtml = renderMasterPondok();
+      else if (state.activeMasterTab === 'kelas') innerHtml = renderMasterKelas();
+      else if (state.activeMasterTab === 'mapel') innerHtml = renderMasterMapel();
+      else innerHtml = renderMasterSantri();
+
+      return `
+        <div class="space-y-5">
+          <div>
+            <h1 class="text-xl md:text-2xl font-extrabold text-slate-900">Data Master & Konfigurasi Sistem</h1>
+            <p class="text-xs md:text-sm text-slate-500">Ikuti urutan langkah 1 hingga 4 di bawah ini agar relasi kelas, mata pelajaran, dan santri tersinkronisasi otomatis.</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            ${steps.map(s => `
+              <button type="button" onclick="switchMasterTab('${s.id}')" class="text-left p-3.5 rounded-2xl border transition flex items-start gap-3 ${
+                state.activeMasterTab === s.id
+                  ? 'bg-emerald-800 text-white border-emerald-800 shadow-md'
+                  : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-400'
+              }">
+                <span class="w-7 h-7 rounded-xl flex items-center justify-center text-xs font-extrabold shrink-0 ${
+                  state.activeMasterTab === s.id ? 'bg-white text-emerald-900' : 'bg-emerald-100 text-emerald-800'
+                }">${s.step}</span>
+                <div class="min-w-0">
+                  <div class="text-xs font-extrabold truncate">${s.label}</div>
+                  <div class="text-[11px] truncate ${state.activeMasterTab === s.id ? 'text-emerald-200' : 'text-slate-400'}">${s.desc}</div>
+                </div>
+              </button>
+            `).join('')}
+          </div>
+
+          ${innerHtml}
+        </div>
+      `;
+    }
+
+    function renderMasterPondok() {
+      const s = state.settings;
+      return `
+        <form onsubmit="savePondokSettings(event)" class="glass-panel rounded-2xl p-5 md:p-6 space-y-5 shadow-xs">
+          <h2 class="text-base font-extrabold text-slate-900 border-b border-slate-200 pb-3">Langkah 1: Identitas Pondok Pesantren & Pengaturan Raport</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Nama Pondok Pesantren</label>
+              <input type="text" name="namaPondok" required value="${s.namaPondok}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Nama Pengasuh Pondok</label>
+              <input type="text" name="namaPengasuh" required value="${s.namaPengasuh}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Lengkap Pondok</label>
+              <input type="text" name="alamatPondok" required value="${s.alamatPondok}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Identitas Lembaga / NSPP</label>
+              <input type="text" name="identitasLembaga" value="${s.identitasLembaga}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Tahun Berdiri & URL Logo Pondok (Opsional)</label>
+              <div class="grid grid-cols-3 gap-2">
+                <input type="text" name="tahunBerdiri" placeholder="Tahun" value="${s.tahunBerdiri}" class="px-3 py-2.5 rounded-xl border border-slate-300 text-sm" />
+                <input type="url" name="logoUrl" placeholder="https://.../logo.png" value="${s.logoUrl}" class="col-span-2 px-3 py-2.5 rounded-xl border border-slate-300 text-sm" />
+              </div>
+            </div>
+          </div>
+
+          <h3 class="text-sm font-extrabold text-emerald-900 pt-2 border-t border-slate-200">Pengaturan Tahun Ajaran, Semester & Rumus Nilai Akhir</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Tahun Ajaran Aktif</label>
+              <input type="text" name="tahunAjaranAktif" required value="${s.tahunAjaranAktif}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Semester Aktif</label>
+              <select name="semesterAktif" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white">
+                <option value="Ganjil" ${s.semesterAktif === 'Ganjil' ? 'selected' : ''}>Ganjil</option>
+                <option value="Genap" ${s.semesterAktif === 'Genap' ? 'selected' : ''}>Genap</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Penerbitan Raport</label>
+              <input type="date" name="tanggalRaport" value="${s.tanggalRaport}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Jumlah Kolom NH (1-4)</label>
+              <select name="jumlahNH" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white">
+                ${[1, 2, 3, 4].map(n => `<option value="${n}" ${Number(s.jumlahNH) === n ? 'selected' : ''}>${n} Kolom NH</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Bobot Rata-rata NH (%)</label>
+              <input type="number" name="bobotNH" min="0" max="100" value="${s.bobotNH}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Bobot Nilai Ujian / NU (%)</label>
+              <input type="number" name="bobotNU" min="0" max="100" value="${s.bobotNU}" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div class="col-span-2 flex items-center pt-5">
+              <label class="inline-flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" name="isLocked" ${s.isLocked ? 'checked' : ''} class="w-4 h-4 rounded text-emerald-700" />
+                <span class="text-xs font-bold text-slate-800">Kunci Perubahan Nilai & Raport (Aktifkan setelah raport sah)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-2">
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-md">
+              Simpan Pengaturan Pondok
+            </button>
+          </div>
+        </form>
+      `;
+    }
+
+    window.addKelasSubmit = async function (e) {
+      e.preventDefault();
+      const f = e.target;
+      const payload = {
+        namaKelas: f.namaKelas.value.trim(),
+        kategori: f.kategori.value,
+        jenjang: f.jenjang.value.trim(),
+        waliKelas: f.waliKelas.value.trim(),
+        tahunAjaran: state.settings.tahunAjaranAktif
+      };
+      await saveData('kelas', 'kelas', payload);
+      await logAudit('Tambah Kelas', `Menambahkan kelas ${payload.namaKelas} (${payload.kategori})`);
+      showToast('Kelas baru berhasil ditambahkan');
+      f.reset();
+    };
+
+    window.deleteKelas = async function (id) {
+      await removeData('kelas', 'kelas', id);
+      showToast('Data kelas dihapus');
+    };
+
+    function renderMasterKelas() {
+      const categories = ['Semua', 'Diniyah', "Al-Qur'an", 'Bahasa Arab'];
+      const filteredKelas = state.selectedKelasKategoriFilter === 'Semua'
+        ? state.kelas
+        : state.kelas.filter(k => k.kategori === state.selectedKelasKategoriFilter);
+
+      return `
+        <div class="space-y-5">
+          <div class="glass-panel rounded-2xl p-5 shadow-xs space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h2 class="text-base font-extrabold text-slate-900">Langkah 2: Manajemen Kelas (Diniyah, Al-Qur'an & Bahasa Arab)</h2>
+              <div class="flex flex-wrap gap-1.5">
+                ${categories.map(cat => {
+                  const cnt = cat === 'Semua' ? state.kelas.length : state.kelas.filter(k => k.kategori === cat).length;
+                  return `
+                    <button type="button" onclick="state.selectedKelasKategoriFilter='${cat.replace("'", "\\'")}'; renderApp();"
+                      class="px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                        state.selectedKelasKategoriFilter === cat
+                          ? 'bg-emerald-800 text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }">
+                      ${cat} (${cnt})
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <form onsubmit="addKelasSubmit(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Kategori Program</label>
+                <select name="kategori" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold">
+                  <option value="Diniyah" ${state.selectedKelasKategoriFilter === 'Diniyah' ? 'selected' : ''}>Diniyah</option>
+                  <option value="Al-Qur'an" ${state.selectedKelasKategoriFilter === "Al-Qur'an" ? 'selected' : ''}>Al-Qur'an</option>
+                  <option value="Bahasa Arab" ${state.selectedKelasKategoriFilter === 'Bahasa Arab' ? 'selected' : ''}>Bahasa Arab</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Jenjang / Tingkatan</label>
+                <input type="text" name="jenjang" required placeholder="Misal: Ula / Wustho / Dasar" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Nama Kelas</label>
+                <input type="text" name="namaKelas" required placeholder="Misal: 1 Ula Diniyah" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Wali Kelas</label>
+                <input type="text" name="waliKelas" required placeholder="Nama Ustadz/Wali Kelas" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+              </div>
+              <div class="flex items-end">
+                <button type="submit" class="w-full py-2 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold">
+                  + Tambah Kelas
+                </button>
+              </div>
+            </form>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                    <th class="p-3 font-bold">No</th>
+                    <th class="p-3 font-bold">Program</th>
+                    <th class="p-3 font-bold">Jenjang</th>
+                    <th class="p-3 font-bold">Nama Kelas</th>
+                    <th class="p-3 font-bold">Wali Kelas</th>
+                    <th class="p-3 font-bold text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  ${filteredKelas.length === 0 ? `
+                    <tr><td colspan="6" class="p-6 text-center text-slate-400">Belum ada data kelas pada kategori ini.</td></tr>
+                  ` : filteredKelas.map((k, idx) => `
+                    <tr class="hover:bg-slate-50">
+                      <td class="p-3">${idx + 1}</td>
+                      <td class="p-3"><span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 font-bold">${k.kategori}</span></td>
+                      <td class="p-3 font-medium">${k.jenjang || '-'}</td>
+                      <td class="p-3 font-extrabold text-slate-900">${k.namaKelas}</td>
+                      <td class="p-3">${k.waliKelas || '-'}</td>
+                      <td class="p-3 text-right">
+                        <button type="button" onclick="deleteKelas('${k.id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold">Hapus</button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    window.addMapelSubmit = async function (e) {
+      e.preventDefault();
+      const f = e.target;
+      const kelasObj = state.kelas.find(k => k.id === f.kelasId.value);
+      if (!kelasObj) return showToast('Pilih kelas terlebih dahulu!', 'error');
+
+      const payload = {
+        namaMapel: f.namaMapel.value.trim(),
+        kategori: kelasObj.kategori,
+        jenjang: kelasObj.jenjang || '',
+        kelasId: kelasObj.id,
+        guruId: '',
+        namaGuru: f.namaGuru.value.trim(),
+        kkm: Number(f.kkm.value) || 75,
+        statusAktif: true
+      };
+      await saveData('mata_pelajaran', 'mataPelajaran', payload);
+      await logAudit('Tambah Mapel', `Menambahkan mapel ${payload.namaMapel} untuk kelas ${kelasObj.namaKelas}`);
+      showToast('Mata pelajaran berhasil ditambahkan');
+      f.reset();
+    };
+
+    window.deleteMapel = async function (id) {
+      await removeData('mata_pelajaran', 'mataPelajaran', id);
+      showToast('Mata pelajaran dihapus');
+    };
+
+    function renderMasterMapel() {
+      const categories = ['Semua', 'Diniyah', "Al-Qur'an", 'Bahasa Arab'];
+      const kelasOptions = state.selectedMapelKategoriFilter === 'Semua'
+        ? state.kelas
+        : state.kelas.filter(k => k.kategori === state.selectedMapelKategoriFilter);
+
+      const filteredMapel = state.mataPelajaran.filter(m => {
+        if (state.selectedMapelKategoriFilter !== 'Semua' && m.kategori !== state.selectedMapelKategoriFilter) return false;
+        if (state.selectedMapelKelasFilter !== 'all' && m.kelasId !== state.selectedMapelKelasFilter) return false;
+        return true;
+      });
+
+      return `
+        <div class="glass-panel rounded-2xl p-5 shadow-xs space-y-4">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <h2 class="text-base font-extrabold text-slate-900">Langkah 3: Mata Pelajaran & KKM per Kelas</h2>
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="flex flex-wrap gap-1">
+                ${categories.map(cat => `
+                  <button type="button" onclick="state.selectedMapelKategoriFilter='${cat.replace("'", "\\'")}'; state.selectedMapelKelasFilter='all'; renderApp();"
+                    class="px-2.5 py-1.5 rounded-xl text-xs font-bold transition ${
+                      state.selectedMapelKategoriFilter === cat ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-700'
+                    }">
+                    ${cat}
+                  </button>
+                `).join('')}
+              </div>
+              <select onchange="state.selectedMapelKelasFilter=this.value; renderApp();" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold bg-white">
+                <option value="all">Semua Kelas (${kelasOptions.length})</option>
+                ${kelasOptions.map(k => `<option value="${k.id}" ${state.selectedMapelKelasFilter === k.id ? 'selected' : ''}>${k.namaKelas} (${k.kategori})</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <form onsubmit="addMapelSubmit(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">Pilih Kelas & Program</label>
+              <select name="kelasId" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-semibold">
+                <option value="">-- Pilih Kelas --</option>
+                ${kelasOptions.map(k => `<option value="${k.id}" ${state.selectedMapelKelasFilter === k.id ? 'selected' : ''}>[${k.kategori}] ${k.namaKelas}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">Nama Mata Pelajaran / Kitab</label>
+              <input type="text" name="namaMapel" required placeholder="Misal: Fikih (Safinatun Najah)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">Guru Pengampu</label>
+              <input type="text" name="namaGuru" required placeholder="Nama Ustadz Pengampu" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">KKM (0-100)</label>
+              <input type="number" name="kkm" min="0" max="100" value="75" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            </div>
+            <div class="flex items-end">
+              <button type="submit" class="w-full py-2 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold">
+                + Tambah Mapel
+              </button>
+            </div>
+          </form>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                  <th class="p-3 font-bold">No</th>
+                  <th class="p-3 font-bold">Program & Kelas</th>
+                  <th class="p-3 font-bold">Mata Pelajaran</th>
+                  <th class="p-3 font-bold">Guru Pengampu</th>
+                  <th class="p-3 font-bold text-center">KKM</th>
+                  <th class="p-3 font-bold text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${filteredMapel.length === 0 ? `
+                  <tr><td colspan="6" class="p-6 text-center text-slate-400">Belum ada mata pelajaran pada filter ini.</td></tr>
+                ` : filteredMapel.map((m, idx) => `
+                  <tr class="hover:bg-slate-50">
+                    <td class="p-3">${idx + 1}</td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold">${m.kategori}</span>
+                      <span class="font-semibold text-slate-700 ml-1">${getKelasName(m.kelasId)}</span>
+                    </td>
+                    <td class="p-3 font-extrabold text-slate-900">${m.namaMapel}</td>
+                    <td class="p-3">${m.namaGuru || '-'}</td>
+                    <td class="p-3 text-center font-bold">${m.kkm}</td>
+                    <td class="p-3 text-right">
+                      <button type="button" onclick="deleteMapel('${m.id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold">Hapus</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    window.openSantriFormModal = function (santriId = null) {
+      const s = santriId ? state.santri.find(item => item.id === santriId) : {};
+      const kDiniyah = state.kelas.filter(k => k.kategori === 'Diniyah');
+      const kQuran = state.kelas.filter(k => k.kategori === "Al-Qur'an");
+      const kArab = state.kelas.filter(k => k.kategori === 'Bahasa Arab');
+
+      openModal(`
+        <form onsubmit="saveSantriForm(event, '${santriId || ''}')" class="space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h3 class="text-base font-extrabold text-slate-900">${santriId ? 'Edit Data Santri' : 'Tambah Santri Baru'}</h3>
+            <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">NIS / Nomor Induk Santri *</label>
+              <input type="text" name="nis" required value="${s?.nis || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Nama Lengkap Santri *</label>
+              <input type="text" name="nama" required value="${s?.nama || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Jenis Kelamin</label>
+              <select name="jk" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white">
+                <option value="L" ${s?.jk === 'L' ? 'selected' : ''}>Laki-laki (Putra)</option>
+                <option value="P" ${s?.jk === 'P' ? 'selected' : ''}>Perempuan (Putri)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Status Santri</label>
+              <select name="status" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white">
+                <option value="Aktif" ${s?.status === 'Aktif' ? 'selected' : ''}>Aktif</option>
+                <option value="Alumni" ${s?.status === 'Alumni' ? 'selected' : ''}>Alumni</option>
+                <option value="Keluar" ${s?.status === 'Keluar' ? 'selected' : ''}>Keluar</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Kelas Diniyah</label>
+              <select name="kelasDiniyahId" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white">
+                <option value="">-- Belum Ditempatkan --</option>
+                ${kDiniyah.map(k => `<option value="${k.id}" ${s?.kelasDiniyahId === k.id ? 'selected' : ''}>${k.namaKelas}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Kelas Al-Qur'an</label>
+              <select name="kelasQuranId" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white">
+                <option value="">-- Belum Ditempatkan --</option>
+                ${kQuran.map(k => `<option value="${k.id}" ${s?.kelasQuranId === k.id ? 'selected' : ''}>${k.namaKelas}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Kelas Bahasa Arab</label>
+              <select name="kelasArabId" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white">
+                <option value="">-- Belum Ditempatkan --</option>
+                ${kArab.map(k => `<option value="${k.id}" ${s?.kelasArabId === k.id ? 'selected' : ''}>${k.namaKelas}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Nama Orang Tua / Wali</label>
+              <input type="text" name="namaWali" value="${s?.namaWali || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Nomor HP Wali</label>
+              <input type="text" name="hpWali" value="${s?.hpWali || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Alamat</label>
+              <input type="text" name="alamat" value="${s?.alamat || ''}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Batal</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-800 text-white text-xs font-bold">Simpan Data Santri</button>
+          </div>
+        </form>
+      `);
+    };
+
+    window.saveSantriForm = async function (e, santriId) {
+      e.preventDefault();
+      const f = e.target;
+      const payload = {
+        nis: f.nis.value.trim(),
+        nama: f.nama.value.trim(),
+        jk: f.jk.value,
+        status: f.status.value,
+        kelasDiniyahId: f.kelasDiniyahId.value,
+        kelasQuranId: f.kelasQuranId.value,
+        kelasArabId: f.kelasArabId.value,
+        namaWali: f.namaWali.value.trim(),
+        hpWali: f.hpWali.value.trim(),
+        alamat: f.alamat.value.trim()
+      };
+      await saveData('santri', 'santri', payload, santriId || null);
+      await logAudit('Simpan Santri', `Menyimpan data santri ${payload.nama} (${payload.nis})`);
+      closeModal();
+      showToast('Data santri berhasil disimpan');
+    };
+
+    window.deleteSantri = async function (id) {
+      await removeData('santri', 'santri', id);
+      showToast('Data santri dihapus');
+    };
+
+    function renderMasterSantri() {
+      const kelasByProg = state.selectedSantriProgramFilter === 'Semua'
+        ? state.kelas
+        : state.kelas.filter(k => k.kategori === state.selectedSantriProgramFilter);
+
+      const filteredSantri = state.santri.filter(s => {
+        const q = state.selectedSantriSearch.toLowerCase();
+        if (q && !s.nama.toLowerCase().includes(q) && !String(s.nis).toLowerCase().includes(q)) return false;
+        if (state.selectedSantriProgramFilter === 'Diniyah') {
+          if (state.selectedSantriKelasFilter !== 'all' && s.kelasDiniyahId !== state.selectedSantriKelasFilter) return false;
+          if (state.selectedSantriKelasFilter === 'all' && !s.kelasDiniyahId) return false;
+        } else if (state.selectedSantriProgramFilter === "Al-Qur'an") {
+          if (state.selectedSantriKelasFilter !== 'all' && s.kelasQuranId !== state.selectedSantriKelasFilter) return false;
+          if (state.selectedSantriKelasFilter === 'all' && !s.kelasQuranId) return false;
+        } else if (state.selectedSantriProgramFilter === 'Bahasa Arab') {
+          if (state.selectedSantriKelasFilter !== 'all' && s.kelasArabId !== state.selectedSantriKelasFilter) return false;
+          if (state.selectedSantriKelasFilter === 'all' && !s.kelasArabId) return false;
+        }
+        return true;
+      });
+
+      return `
+        <div class="glass-panel rounded-2xl p-5 shadow-xs space-y-4">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <h2 class="text-base font-extrabold text-slate-900">Langkah 4: Data Induk Santri & Penempatan Kelas</h2>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="downloadTemplateSantri()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold">
+                Unduh Template / Ekspor Excel
+              </button>
+              <label class="px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold cursor-pointer">
+                Impor Excel Santri
+                <input type="file" accept=".xlsx,.xls" onchange="importSantriExcel(event)" class="hidden" />
+              </label>
+              <button type="button" onclick="openSantriFormModal()" class="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold">
+                + Tambah Santri
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <input type="text" placeholder="Cari Nama atau NIS Santri..." value="${state.selectedSantriSearch}"
+              oninput="state.selectedSantriSearch=this.value; renderApp();"
+              class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white" />
+            <select onchange="state.selectedSantriProgramFilter=this.value; state.selectedSantriKelasFilter='all'; renderApp();"
+              class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+              <option value="Semua" ${state.selectedSantriProgramFilter === 'Semua' ? 'selected' : ''}>Semua Program Kelas</option>
+              <option value="Diniyah" ${state.selectedSantriProgramFilter === 'Diniyah' ? 'selected' : ''}>Filter: Kelas Diniyah</option>
+              <option value="Al-Qur'an" ${state.selectedSantriProgramFilter === "Al-Qur'an" ? 'selected' : ''}>Filter: Kelas Al-Qur'an</option>
+              <option value="Bahasa Arab" ${state.selectedSantriProgramFilter === 'Bahasa Arab' ? 'selected' : ''}>Filter: Kelas Bahasa Arab</option>
+            </select>
+            <select onchange="state.selectedSantriKelasFilter=this.value; renderApp();"
+              class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+              <option value="all">Semua Kelas (${kelasByProg.length})</option>
+              ${kelasByProg.map(k => `<option value="${k.id}" ${state.selectedSantriKelasFilter === k.id ? 'selected' : ''}>${k.namaKelas}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                  <th class="p-3 font-bold">NIS</th>
+                  <th class="p-3 font-bold">Nama Santri</th>
+                  <th class="p-3 font-bold">L/P</th>
+                  <th class="p-3 font-bold">Kelas Diniyah</th>
+                  <th class="p-3 font-bold">Kelas Qur'an</th>
+                  <th class="p-3 font-bold">Kelas B. Arab</th>
+                  <th class="p-3 font-bold">Wali & HP</th>
+                  <th class="p-3 font-bold">Status</th>
+                  <th class="p-3 font-bold text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${filteredSantri.length === 0 ? `
+                  <tr><td colspan="9" class="p-6 text-center text-slate-400">Tidak ada data santri yang cocok dengan filter.</td></tr>
+                ` : filteredSantri.map(s => `
+                  <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-mono font-bold text-slate-700">${s.nis}</td>
+                    <td class="p-3 font-extrabold text-slate-900">${s.nama}</td>
+                    <td class="p-3">${s.jk || 'L'}</td>
+                    <td class="p-3">${getKelasName(s.kelasDiniyahId)}</td>
+                    <td class="p-3">${getKelasName(s.kelasQuranId)}</td>
+                    <td class="p-3">${getKelasName(s.kelasArabId)}</td>
+                    <td class="p-3">${s.namaWali || '-'} <span class="text-slate-400 block text-[10px]">${s.hpWali || ''}</span></td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded-md font-bold ${s.status === 'Aktif' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}">${s.status}</span></td>
+                    <td class="p-3 text-right whitespace-nowrap space-x-1">
+                      <button type="button" onclick="openSantriFormModal('${s.id}')" class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-bold">Edit</button>
+                      <button type="button" onclick="deleteSantri('${s.id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 font-bold">Hapus</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // MODUL 3: PENILAIAN SANTRI (FILTER BERJENJANG PROGRAM -> JENJANG -> KELAS -> MAPEL)
+    // =========================================================================
+    window.saveBatchNilai = async function () {
+      if (state.settings.isLocked) return showToast('Raport sedang dikunci!', 'error');
+      const mapel = state.mataPelajaran.find(m => m.id === state.selectedMapelId);
+      if (!mapel) return showToast('Pilih mata pelajaran terlebih dahulu!', 'error');
+
+      const rows = document.querySelectorAll('[data-nilai-santri-id]');
+      let savedCount = 0;
+
+      for (const row of rows) {
+        const santriId = row.getAttribute('data-nilai-santri-id');
+        const nh1 = Number(row.querySelector('[name="nh1"]')?.value) || 0;
+        const nh2 = Number(row.querySelector('[name="nh2"]')?.value) || 0;
+        const nh3 = Number(row.querySelector('[name="nh3"]')?.value) || 0;
+        const nh4 = Number(row.querySelector('[name="nh4"]')?.value) || 0;
+        const nu = Number(row.querySelector('[name="nu"]')?.value) || 0;
+        const catatanGuru = row.querySelector('[name="catatanGuru"]')?.value.trim() || '';
+        const nilaiAkhir = hitungNilaiAkhir(nh1, nh2, nh3, nh4, nu);
+
+        const existing = state.penilaian.find(p =>
+          p.santriId === santriId &&
+          p.mapelId === mapel.id &&
+          p.tahunAjaran === state.settings.tahunAjaranAktif &&
+          p.semester === state.settings.semesterAktif
+        );
+
+        await saveData('penilaian', 'penilaian', {
+          tahunAjaran: state.settings.tahunAjaranAktif,
+          semester: state.settings.semesterAktif,
+          santriId,
+          mapelId: mapel.id,
+          nh1, nh2, nh3, nh4, nu,
+          nilaiAkhir,
+          catatanGuru
+        }, existing ? existing.id : null);
+        savedCount++;
+      }
+
+      await logAudit('Simpan Nilai', `Menyimpan ${savedCount} nilai mapel ${mapel.namaMapel}`);
+      showToast(`Berhasil menyimpan ${savedCount} nilai santri`);
+    };
+
+    function renderPenilaianModule() {
+      const kelasFiltered = state.kelas.filter(k => {
+        if (state.selectedPenilaianProgramFilter !== 'Semua' && k.kategori !== state.selectedPenilaianProgramFilter) return false;
+        if (state.selectedPenilaianJenjangFilter !== 'Semua' && k.jenjang !== state.selectedPenilaianJenjangFilter) return false;
+        return true;
+      });
+      const jenjangList = [...new Set(state.kelas.map(k => k.jenjang).filter(Boolean))];
+
+      const mapelFiltered = state.mataPelajaran.filter(m => {
+        if (!m.statusAktif) return false;
+        if (state.selectedPenilaianProgramFilter !== 'Semua' && m.kategori !== state.selectedPenilaianProgramFilter) return false;
+        if (state.selectedPenilaianKelasFilter !== 'all' && m.kelasId !== state.selectedPenilaianKelasFilter) return false;
+        return true;
+      });
+
+      if (!mapelFiltered.some(m => m.id === state.selectedMapelId)) {
+        state.selectedMapelId = mapelFiltered[0]?.id || '';
+      }
+      const activeMapel = state.mataPelajaran.find(m => m.id === state.selectedMapelId);
+
+      const santriList = activeMapel ? state.santri.filter(s => {
+        if (s.status !== 'Aktif') return false;
+        if (activeMapel.kategori === 'Diniyah') return s.kelasDiniyahId === activeMapel.kelasId;
+        if (activeMapel.kategori === "Al-Qur'an") return s.kelasQuranId === activeMapel.kelasId;
+        if (activeMapel.kategori === 'Bahasa Arab') return s.kelasArabId === activeMapel.kelasId;
+        return true;
+      }) : [];
+
+      return `
+        <div class="space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl md:text-2xl font-extrabold text-slate-900">Input Nilai & Catatan Guru</h1>
+              <p class="text-xs text-slate-500">Bobot Aktif: NH (${state.settings.bobotNH}%) + NU (${state.settings.bobotNU}%) • Semester ${state.settings.semesterAktif} ${state.settings.tahunAjaranAktif}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="exportNilaiExcel()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold">Template Excel</button>
+              <label class="px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold cursor-pointer">
+                Impor Excel
+                <input type="file" accept=".xlsx,.xls" onchange="importNilaiExcel(event)" class="hidden" />
+              </label>
+            </div>
+          </div>
+
+          <div class="glass-panel rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shadow-xs">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">1. Program</label>
+              <select onchange="state.selectedPenilaianProgramFilter=this.value; state.selectedPenilaianKelasFilter='all'; renderApp();" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+                <option value="Semua">Semua Program</option>
+                <option value="Diniyah" ${state.selectedPenilaianProgramFilter === 'Diniyah' ? 'selected' : ''}>Diniyah</option>
+                <option value="Al-Qur'an" ${state.selectedPenilaianProgramFilter === "Al-Qur'an" ? 'selected' : ''}>Al-Qur'an</option>
+                <option value="Bahasa Arab" ${state.selectedPenilaianProgramFilter === 'Bahasa Arab' ? 'selected' : ''}>Bahasa Arab</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">2. Jenjang / Tingkatan</label>
+              <select onchange="state.selectedPenilaianJenjangFilter=this.value; state.selectedPenilaianKelasFilter='all'; renderApp();" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+                <option value="Semua">Semua Jenjang</option>
+                ${jenjangList.map(j => `<option value="${j}" ${state.selectedPenilaianJenjangFilter === j ? 'selected' : ''}>${j}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">3. Kelas Penempatan Santri</label>
+              <select onchange="state.selectedPenilaianKelasFilter=this.value; renderApp();" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+                <option value="all">Semua Kelas (${kelasFiltered.length})</option>
+                ${kelasFiltered.map(k => `<option value="${k.id}" ${state.selectedPenilaianKelasFilter === k.id ? 'selected' : ''}>${k.namaKelas} (${k.kategori})</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-600 mb-1">4. Mata Pelajaran (KKM: ${activeMapel ? activeMapel.kkm : '-'})</label>
+              <select onchange="state.selectedMapelId=this.value; renderApp();" class="w-full px-3 py-2 rounded-xl border border-emerald-400 text-xs bg-emerald-50/50 font-extrabold text-emerald-950">
+                ${mapelFiltered.length === 0 ? '<option value="">-- Tidak ada mapel --</option>' : mapelFiltered.map(m => `<option value="${m.id}" ${state.selectedMapelId === m.id ? 'selected' : ''}>${m.namaMapel} (${getKelasName(m.kelasId)})</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="glass-panel rounded-2xl p-4 md:p-5 shadow-xs space-y-4">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                    <th class="p-2.5 font-bold">No</th>
+                    <th class="p-2.5 font-bold">Nama Santri</th>
+                    <th class="p-2.5 font-bold text-center">KKM</th>
+                    <th class="p-2.5 font-bold text-center w-16">NH 1</th>
+                    <th class="p-2.5 font-bold text-center w-16">NH 2</th>
+                    <th class="p-2.5 font-bold text-center w-16">NH 3</th>
+                    <th class="p-2.5 font-bold text-center w-16">NH 4</th>
+                    <th class="p-2.5 font-bold text-center w-16">NU</th>
+                    <th class="p-2.5 font-bold text-center">Akhir</th>
+                    <th class="p-2.5 font-bold min-w-[180px]">Catatan Guru</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  ${!activeMapel || santriList.length === 0 ? `
+                    <tr><td colspan="10" class="p-6 text-center text-slate-400">Tidak ada santri yang ditempatkan pada kelas mata pelajaran ini.</td></tr>
+                  ` : santriList.map((s, idx) => {
+                    const n = state.penilaian.find(p =>
+                      p.santriId === s.id &&
+                      p.mapelId === activeMapel.id &&
+                      p.tahunAjaran === state.settings.tahunAjaranAktif &&
+                      p.semester === state.settings.semesterAktif
+                    ) || {};
+                    const akhir = n.nilaiAkhir ?? 0;
+                    const tuntas = akhir >= (Number(activeMapel.kkm) || 75);
+                    return `
+                      <tr data-nilai-santri-id="${s.id}" class="hover:bg-slate-50">
+                        <td class="p-2.5">${idx + 1}</td>
+                        <td class="p-2.5 font-bold text-slate-900">${s.nama} <span class="block text-[10px] font-normal text-slate-400">${s.nis}</span></td>
+                        <td class="p-2.5 text-center font-bold">${activeMapel.kkm}</td>
+                        <td class="p-1.5"><input type="number" name="nh1" min="0" max="100" value="${n.nh1 ?? ''}" ${state.settings.isLocked ? 'disabled' : ''} class="w-14 px-2 py-1.5 rounded-lg border border-slate-300 text-center" /></td>
+                        <td class="p-1.5"><input type="number" name="nh2" min="0" max="100" value="${n.nh2 ?? ''}" ${state.settings.isLocked ? 'disabled' : ''} class="w-14 px-2 py-1.5 rounded-lg border border-slate-300 text-center" /></td>
+                        <td class="p-1.5"><input type="number" name="nh3" min="0" max="100" value="${n.nh3 ?? ''}" ${state.settings.isLocked ? 'disabled' : ''} class="w-14 px-2 py-1.5 rounded-lg border border-slate-300 text-center" /></td>
+                        <td class="p-1.5"><input type="number" name="nh4" min="0" max="100" value="${n.nh4 ?? ''}" ${state.settings.isLocked ? 'disabled' : ''} class="w-14 px-2 py-1.5 rounded-lg border border-slate-300 text-center" /></td>
+                        <td class="p-1.5"><input type="number" name="nu" min="0" max="100" value="${n.nu ?? ''}" ${state.settings.isLocked ? 'disabled' : ''} class="w-14 px-2 py-1.5 rounded-lg border border-emerald-400 bg-emerald-50/40 text-center font-bold" /></td>
+                        <td class="p-2.5 text-center font-extrabold ${tuntas ? 'text-emerald-700' : 'text-rose-600'}">${akhir}</td>
+                        <td class="p-1.5"><input type="text" name="catatanGuru" value="${n.catatanGuru || ''}" ${state.settings.isLocked ? 'disabled' : ''} placeholder="Catatan perkembangan..." class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300" /></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+            ${santriList.length > 0 && !state.settings.isLocked ? `
+              <div class="flex justify-end">
+                <button type="button" onclick="saveBatchNilai()" class="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-md">
+                  Simpan Semua Nilai Kelas Ini
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // MODUL 4: REKAP ABSENSI SEMESTER
+    // =========================================================================
+    window.saveBatchAbsensi = async function () {
+      if (state.settings.isLocked) return showToast('Raport sedang dikunci!', 'error');
+      const cards = document.querySelectorAll('[data-absensi-santri-id]');
+      let count = 0;
+
+      for (const card of cards) {
+        const santriId = card.getAttribute('data-absensi-santri-id');
+        const readCat = (prefix) => ({
+          hadir: Number(card.querySelector(`[name="${prefix}_h"]`)?.value) || 0,
+          izin: Number(card.querySelector(`[name="${prefix}_i"]`)?.value) || 0,
+          sakit: Number(card.querySelector(`[name="${prefix}_s"]`)?.value) || 0,
+          alpa: Number(card.querySelector(`[name="${prefix}_a"]`)?.value) || 0
+        });
+
+        const existing = state.absensiSemester.find(a =>
+          a.santriId === santriId &&
+          a.tahunAjaran === state.settings.tahunAjaranAktif &&
+          a.semester === state.settings.semesterAktif
+        );
+
+        await saveData('absensi_semester', 'absensiSemester', {
+          tahunAjaran: state.settings.tahunAjaranAktif,
+          semester: state.settings.semesterAktif,
+          santriId,
+          jamaah: readCat('jamaah'),
+          quran: readCat('quran'),
+          arab: readCat('arab'),
+          diniyah: readCat('diniyah')
+        }, existing ? existing.id : null);
+        count++;
+      }
+      await logAudit('Simpan Absensi', `Menyimpan rekap absensi ${count} santri`);
+      showToast(`Rekap absensi ${count} santri berhasil disimpan`);
+    };
+
+    function renderAbsensiModule() {
+      const kelasOpts = state.selectedAbsensiProgramFilter === 'Semua'
+        ? state.kelas
+        : state.kelas.filter(k => k.kategori === state.selectedAbsensiProgramFilter);
+      const list = getFilteredSantriByProgramKelas(state.selectedAbsensiProgramFilter, state.selectedAbsensiKelasFilter);
+
+      return `
+        <div class="space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl md:text-2xl font-extrabold text-slate-900">Rekap Absensi Semester</h1>
+              <p class="text-xs text-slate-500">Kategori: Jamaah, Kelas Al-Qur'an, Kelas Bahasa Arab, dan Diniyah</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="exportAbsensiExcel()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold">Template Excel</button>
+              <label class="px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold cursor-pointer">
+                Impor Excel Absensi
+                <input type="file" accept=".xlsx,.xls" onchange="importAbsensiExcel(event)" class="hidden" />
+              </label>
+            </div>
+          </div>
+
+          <div class="glass-panel rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-xs">
+            <select onchange="state.selectedAbsensiProgramFilter=this.value; state.selectedAbsensiKelasFilter='all'; renderApp();" class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+              <option value="Semua">Semua Program</option>
+              <option value="Diniyah" ${state.selectedAbsensiProgramFilter === 'Diniyah' ? 'selected' : ''}>Program Diniyah</option>
+              <option value="Al-Qur'an" ${state.selectedAbsensiProgramFilter === "Al-Qur'an" ? 'selected' : ''}>Program Al-Qur'an</option>
+              <option value="Bahasa Arab" ${state.selectedAbsensiProgramFilter === 'Bahasa Arab' ? 'selected' : ''}>Program Bahasa Arab</option>
+            </select>
+            <select onchange="state.selectedAbsensiKelasFilter=this.value; renderApp();" class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+              <option value="all">Semua Kelas (${kelasOpts.length})</option>
+              ${kelasOpts.map(k => `<option value="${k.id}" ${state.selectedAbsensiKelasFilter === k.id ? 'selected' : ''}>${k.namaKelas}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="space-y-4">
+            ${list.length === 0 ? `
+              <div class="glass-panel rounded-2xl p-8 text-center text-slate-400 text-xs">Tidak ada santri pada filter kelas ini.</div>
+            ` : list.map(s => {
+              const a = state.absensiSemester.find(item =>
+                item.santriId === s.id &&
+                item.tahunAjaran === state.settings.tahunAjaranAktif &&
+                item.semester === state.settings.semesterAktif
+              ) || {};
+              const cats = [
+                { key: 'jamaah', label: '1. Jamaah' },
+                { key: 'quran', label: "2. Kelas Al-Qur'an" },
+                { key: 'arab', label: '3. Kelas Bahasa Arab' },
+                { key: 'diniyah', label: '4. Diniyah' }
+              ];
+              return `
+                <div data-absensi-santri-id="${s.id}" class="glass-panel rounded-2xl p-4 shadow-xs space-y-3">
+                  <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div class="font-extrabold text-sm text-slate-900">${s.nama} <span class="text-xs font-mono font-normal text-slate-400">(${s.nis})</span></div>
+                    <div class="text-[11px] text-slate-500">Diniyah: ${getKelasName(s.kelasDiniyahId)}</div>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    ${cats.map(c => {
+                      const val = a[c.key] || { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+                      return `
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                          <div class="font-extrabold text-emerald-900">${c.label}</div>
+                          <div class="grid grid-cols-4 gap-1.5 text-center">
+                            <div><span class="block text-[10px] text-slate-500">Hadir</span><input type="number" name="${c.key}_h" min="0" value="${val.hadir}" class="w-full p-1 rounded border text-center font-bold" /></div>
+                            <div><span class="block text-[10px] text-slate-500">Izin</span><input type="number" name="${c.key}_i" min="0" value="${val.izin}" class="w-full p-1 rounded border text-center" /></div>
+                            <div><span class="block text-[10px] text-slate-500">Sakit</span><input type="number" name="${c.key}_s" min="0" value="${val.sakit}" class="w-full p-1 rounded border text-center" /></div>
+                            <div><span class="block text-[10px] text-slate-500">Alpa</span><input type="number" name="${c.key}_a" min="0" value="${val.alpa}" class="w-full p-1 rounded border text-center text-rose-700 font-bold" /></div>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${list.length > 0 && !state.settings.isLocked ? `
+            <div class="flex justify-end">
+              <button type="button" onclick="saveBatchAbsensi()" class="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-md">
+                Simpan Semua Rekap Absensi
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // MODUL 5: CATATAN PENGASUH & KEPUTUSAN KENAIKAN
+    // =========================================================================
+    window.saveBatchEvaluasi = async function () {
+      if (state.settings.isLocked) return showToast('Raport sedang dikunci!', 'error');
+      const cards = document.querySelectorAll('[data-evaluasi-santri-id]');
+      let count = 0;
+
+      for (const card of cards) {
+        const santriId = card.getAttribute('data-evaluasi-santri-id');
+        const existing = state.evaluasiRaport.find(ev =>
+          ev.santriId === santriId &&
+          ev.tahunAjaran === state.settings.tahunAjaranAktif &&
+          ev.semester === state.settings.semesterAktif
+        );
+        await saveData('evaluasi_raport', 'evaluasiRaport', {
+          tahunAjaran: state.settings.tahunAjaranAktif,
+          semester: state.settings.semesterAktif,
+          santriId,
+          catatanPengasuh: card.querySelector('[name="catatanPengasuh"]')?.value.trim() || '',
+          hasilQuran: card.querySelector('[name="hasilQuran"]')?.value || 'Lulus',
+          hasilArab: card.querySelector('[name="hasilArab"]')?.value || 'Naik',
+          hasilDiniyah: card.querySelector('[name="hasilDiniyah"]')?.value || 'Naik',
+          tahunAjaranBerikutnya: card.querySelector('[name="tahunAjaranBerikutnya"]')?.value.trim() || '2026/2027',
+          tanggalPenetapan: state.settings.tanggalRaport,
+          statusSah: Boolean(card.querySelector('[name="statusSah"]')?.checked)
+        }, existing ? existing.id : null);
+        count++;
+      }
+      await logAudit('Simpan Catatan Pengasuh', `Menyimpan catatan pengasuh & keputusan kenaikan untuk ${count} santri`);
+      showToast(`Catatan pengasuh & keputusan kenaikan (${count} santri) disimpan`);
+    };
+
+    function renderEvaluasiModule() {
+      const kelasOpts = state.selectedEvaluasiProgramFilter === 'Semua'
+        ? state.kelas
+        : state.kelas.filter(k => k.kategori === state.selectedEvaluasiProgramFilter);
+      const list = getFilteredSantriByProgramKelas(state.selectedEvaluasiProgramFilter, state.selectedEvaluasiKelasFilter);
+
+      return `
+        <div class="space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl md:text-2xl font-extrabold text-slate-900">Catatan Pengasuh & Keputusan Kenaikan</h1>
+              <p class="text-xs text-slate-500">Pengisian akhlak/ibadah santri, status kelulusan ujian, dan pengesahan raport</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" onclick="exportEvaluasiExcel()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold">Template Excel</button>
+              <label class="px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold cursor-pointer">
+                Impor Excel Pengasuh
+                <input type="file" accept=".xlsx,.xls" onchange="importEvaluasiExcel(event)" class="hidden" />
+              </label>
+            </div>
+          </div>
+
+          <div class="glass-panel rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 shadow-xs">
+            <select onchange="state.selectedEvaluasiProgramFilter=this.value; state.selectedEvaluasiKelasFilter='all'; renderApp();" class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+              <option value="Semua">Semua Program</option>
+              <option value="Diniyah" ${state.selectedEvaluasiProgramFilter === 'Diniyah' ? 'selected' : ''}>Program Diniyah</option>
+              <option value="Al-Qur'an" ${state.selectedEvaluasiProgramFilter === "Al-Qur'an" ? 'selected' : ''}>Program Al-Qur'an</option>
+              <option value="Bahasa Arab" ${state.selectedEvaluasiProgramFilter === 'Bahasa Arab' ? 'selected' : ''}>Program Bahasa Arab</option>
+            </select>
+            <select onchange="state.selectedEvaluasiKelasFilter=this.value; renderApp();" class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+              <option value="all">Semua Kelas (${kelasOpts.length})</option>
+              ${kelasOpts.map(k => `<option value="${k.id}" ${state.selectedEvaluasiKelasFilter === k.id ? 'selected' : ''}>${k.namaKelas}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="space-y-4">
+            ${list.length === 0 ? `
+              <div class="glass-panel rounded-2xl p-8 text-center text-slate-400 text-xs">Tidak ada santri pada filter kelas ini.</div>
+            ` : list.map(s => {
+              const ev = state.evaluasiRaport.find(item =>
+                item.santriId === s.id &&
+                item.tahunAjaran === state.settings.tahunAjaranAktif &&
+                item.semester === state.settings.semesterAktif
+              ) || {};
+              return `
+                <div data-evaluasi-santri-id="${s.id}" class="glass-panel rounded-2xl p-4 md:p-5 shadow-xs space-y-3">
+                  <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+                    <div class="font-extrabold text-sm text-slate-900">${s.nama} <span class="text-xs font-mono font-normal text-slate-400">(${s.nis})</span></div>
+                    <label class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-900 text-xs font-bold cursor-pointer">
+                      <input type="checkbox" name="statusSah" ${ev.statusSah ? 'checked' : ''} class="w-4 h-4 rounded text-emerald-700" />
+                      <span>Sahkan Raport Santri Ini</span>
+                    </label>
+                  </div>
+                  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs">
+                    <div class="lg:col-span-2">
+                      <label class="block font-bold text-slate-700 mb-1">Catatan Pengasuh (Akhlak, Ibadah & Kedisiplinan)</label>
+                      <textarea name="catatanPengasuh" rows="3" placeholder="Tuliskan catatan perkembangan santri..." class="w-full px-3 py-2 rounded-xl border border-slate-300">${ev.catatanPengasuh || ''}</textarea>
+                    </div>
+                    <div class="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="font-bold text-slate-700">Ujian Qur'an:</span>
+                        <select name="hasilQuran" class="px-2.5 py-1 rounded-lg border bg-white font-bold">
+                          <option value="Lulus" ${ev.hasilQuran !== 'Tidak Lulus' ? 'selected' : ''}>Lulus</option>
+                          <option value="Tidak Lulus" ${ev.hasilQuran === 'Tidak Lulus' ? 'selected' : ''}>Tidak Lulus</option>
+                        </select>
+                      </div>
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="font-bold text-slate-700">Ujian B. Arab:</span>
+                        <select name="hasilArab" class="px-2.5 py-1 rounded-lg border bg-white font-bold">
+                          <option value="Naik" ${ev.hasilArab !== 'Tidak Naik' ? 'selected' : ''}>Naik</option>
+                          <option value="Tidak Naik" ${ev.hasilArab === 'Tidak Naik' ? 'selected' : ''}>Tidak Naik</option>
+                        </select>
+                      </div>
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="font-bold text-slate-700">Ujian Diniyah:</span>
+                        <select name="hasilDiniyah" class="px-2.5 py-1 rounded-lg border bg-white font-bold">
+                          <option value="Naik" ${ev.hasilDiniyah !== 'Tidak Naik' ? 'selected' : ''}>Naik</option>
+                          <option value="Tidak Naik" ${ev.hasilDiniyah === 'Tidak Naik' ? 'selected' : ''}>Tidak Naik</option>
+                        </select>
+                      </div>
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="font-bold text-slate-700">Th. Ajaran Baru:</span>
+                        <input type="text" name="tahunAjaranBerikutnya" value="${ev.tahunAjaranBerikutnya || '2026/2027'}" class="w-24 px-2 py-1 rounded-lg border text-center font-bold" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${list.length > 0 && !state.settings.isLocked ? `
+            <div class="flex justify-end">
+              <button type="button" onclick="saveBatchEvaluasi()" class="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-md">
+                Simpan Semua Catatan & Keputusan
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // MODUL 6: CETAK RAPORT A4 PORTRAIT & UNDUH PDF
+    // =========================================================================
+    window.downloadRaportPdf = function (nis, namaSantri) {
+      const element = document.getElementById('printable-raport-area');
+      if (!element) return showToast('Area raport tidak ditemukan', 'error');
+      if (typeof html2pdf === 'undefined') {
+        return window.printRaportIsolated();
+      }
+      showToast('Menyiapkan file PDF ukuran A4...', 'info');
+      const opt = {
+        margin: [6, 8, 6, 8],
+        filename: `Raport_${nis}_${namaSantri.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      html2pdf().set(opt).from(element).save().then(() => {
+        showToast('File PDF Raport berhasil diunduh');
+      }).catch(() => {
+        window.printRaportIsolated();
+      });
+    };
+
+    window.printRaportIsolated = function () {
+      const content = document.getElementById('printable-raport-area');
+      if (!content) return;
+      const printWin = window.open('', '_blank', 'width=850,height=1100');
+      if (!printWin) {
+        window.print();
+        return;
+      }
+      printWin.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Cetak Raport Santri</title>
+          <style>
+            @page { size: A4 portrait; margin: 8mm 10mm; }
+            body { font-family: 'Times New Roman', Times, serif; color: #000; margin: 0; padding: 0; }
+            .a4-sheet { width: 100%; box-sizing: border-box; font-size: 11pt; line-height: 1.35; }
+            .raport-table { width: 100%; border-collapse: collapse; }
+            .raport-table th, .raport-table td { border: 1px solid #000; padding: 4px 6px; font-size: 10pt; }
+            .raport-table th { background-color: #f3f4f6; font-weight: bold; text-align: center; }
+          </style>
+        </head>
+        <body>${content.innerHTML}</body>
+        </html>
+      `);
+      printWin.document.close();
+      printWin.focus();
+      setTimeout(() => {
+        printWin.print();
+        printWin.close();
+      }, 300);
+    };
+
+    function renderCetakRaportModule() {
+      const isWali = state.currentUser?.role === 'wali';
+      const kelasOpts = state.selectedRaportProgramFilter === 'Semua'
+        ? state.kelas
+        : state.kelas.filter(k => k.kategori === state.selectedRaportProgramFilter);
+
+      let santriList = isWali
+        ? state.santri.filter(s => s.id === state.currentUser.refId || s.nis === state.currentUser.username)
+        : getFilteredSantriByProgramKelas(state.selectedRaportProgramFilter, state.selectedRaportKelasFilter);
+
+      if (!santriList.some(s => s.id === state.selectedSantriRaportId)) {
+        state.selectedSantriRaportId = santriList[0]?.id || '';
+      }
+
+      const santri = santriList.find(s => s.id === state.selectedSantriRaportId);
+      const sett = state.settings;
+      const nilaiSantri = santri ? state.penilaian.filter(p =>
+        p.santriId === santri.id &&
+        p.tahunAjaran === sett.tahunAjaranAktif &&
+        p.semester === sett.semesterAktif
+      ) : [];
+
+      const mapelSantri = santri ? state.mataPelajaran.filter(m =>
+        m.statusAktif && (
+          m.kelasId === santri.kelasDiniyahId ||
+          m.kelasId === santri.kelasQuranId ||
+          m.kelasId === santri.kelasArabId
+        )
+      ) : [];
+
+      const abs = santri ? (state.absensiSemester.find(a =>
+        a.santriId === santri.id &&
+        a.tahunAjaran === sett.tahunAjaranAktif &&
+        a.semester === sett.semesterAktif
+      ) || {}) : {};
+
+      const ev = santri ? (state.evaluasiRaport.find(e =>
+        e.santriId === santri.id &&
+        e.tahunAjaran === sett.tahunAjaranAktif &&
+        e.semester === sett.semesterAktif
+      ) || {}) : {};
+
+      const quranLulus = ev.hasilQuran !== 'Tidak Lulus';
+      const arabNaik = ev.hasilArab !== 'Tidak Naik';
+      const diniyahNaik = ev.hasilDiniyah !== 'Tidak Naik';
+
+      return `
+        <div class="space-y-5">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 no-print">
+            <div>
+              <h1 class="text-xl md:text-2xl font-extrabold text-slate-900">Pratinjau & Cetak Raport A4</h1>
+              <p class="text-xs text-slate-500">Format resmi A4 Portrait sesuai standar Pondok Pesantren & Madrasah Diniyah</p>
+            </div>
+            ${santri ? `
+              <div class="flex flex-wrap gap-2">
+                <button type="button" onclick="downloadRaportPdf('${santri.nis}', '${santri.nama.replace(/'/g, '')}')" class="px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-md flex items-center gap-1.5">
+                  <i data-lucide="download" class="w-4 h-4"></i> Simpan PDF (A4)
+                </button>
+                <button type="button" onclick="printRaportIsolated()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold shadow-md flex items-center gap-1.5">
+                  <i data-lucide="printer" class="w-4 h-4"></i> Cetak Langsung
+                </button>
+              </div>
+            ` : ''}
+          </div>
+
+          ${!isWali ? `
+            <div class="glass-panel rounded-2xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 shadow-xs no-print">
+              <select onchange="state.selectedRaportProgramFilter=this.value; state.selectedRaportKelasFilter='all'; renderApp();" class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+                <option value="Semua">Semua Program</option>
+                <option value="Diniyah" ${state.selectedRaportProgramFilter === 'Diniyah' ? 'selected' : ''}>Program Diniyah</option>
+                <option value="Al-Qur'an" ${state.selectedRaportProgramFilter === "Al-Qur'an" ? 'selected' : ''}>Program Al-Qur'an</option>
+                <option value="Bahasa Arab" ${state.selectedRaportProgramFilter === 'Bahasa Arab' ? 'selected' : ''}>Program Bahasa Arab</option>
+              </select>
+              <select onchange="state.selectedRaportKelasFilter=this.value; renderApp();" class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs bg-white font-bold">
+                <option value="all">Semua Kelas (${kelasOpts.length})</option>
+                ${kelasOpts.map(k => `<option value="${k.id}" ${state.selectedRaportKelasFilter === k.id ? 'selected' : ''}>${k.namaKelas}</option>`).join('')}
+              </select>
+              <select onchange="state.selectedSantriRaportId=this.value; renderApp();" class="px-3.5 py-2 rounded-xl border border-emerald-400 text-xs bg-emerald-50/50 font-extrabold text-emerald-950">
+                ${santriList.length === 0 ? '<option value="">-- Tidak ada santri --</option>' : santriList.map(s => `<option value="${s.id}" ${state.selectedSantriRaportId === s.id ? 'selected' : ''}>${s.nis} - ${s.nama}</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+
+          ${!santri ? `
+            <div class="glass-panel rounded-2xl p-8 text-center text-slate-500 text-sm">Silakan pilih kelas dan santri terlebih dahulu untuk menampilkan raport.</div>
+          ` : `
+            <div class="overflow-x-auto pb-4">
+              <div id="printable-raport-area">
+                <div class="a4-sheet">
+                  <!-- KOP PONDOK -->
+                  <div style="border: 2px solid #000; padding: 8px 12px; display: flex; align-items: center; gap: 14px; margin-bottom: 10px;">
+                    ${sett.logoUrl ? `<img src="${sett.logoUrl}" alt="Logo" style="width: 62px; height: 62px; object-fit: contain;" onerror="this.style.display='none'" />` : ''}
+                    <div style="flex: 1; text-align: center;">
+                      <div style="font-size: 14pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">${sett.namaPondok || 'PONDOK PESANTREN & MADRASAH DINIYAH'}</div>
+                      <div style="font-size: 9.5pt;">${sett.alamatPondok || ''}</div>
+                      <div style="font-size: 9pt; font-style: italic;">${sett.identitasLembaga || ''}</div>
+                      <div style="margin-top: 4px; font-size: 11.5pt; font-weight: bold; text-decoration: underline;">RAPORT PONDOK PESANTREN</div>
+                      <div style="font-size: 9.5pt;">Tahun Ajaran ${sett.tahunAjaranAktif} • Semester ${sett.semesterAktif}</div>
+                    </div>
+                  </div>
+
+                  <!-- IDENTITAS SANTRI -->
+                  <table style="width: 100%; margin-bottom: 10px; font-size: 10.5pt;">
+                    <tr>
+                      <td style="width: 150px; padding: 2px 0;">Nama Santri</td>
+                      <td style="width: 12px;">:</td>
+                      <td style="font-weight: bold;">${santri.nama} (NIS: ${santri.nis})</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 2px 0;">Kelas Diniyah</td>
+                      <td>:</td>
+                      <td>${getKelasName(santri.kelasDiniyahId)}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 2px 0;">Kelas Qur'an</td>
+                      <td>:</td>
+                      <td>${getKelasName(santri.kelasQuranId)}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 2px 0;">Kelas B. Arab</td>
+                      <td>:</td>
+                      <td>${getKelasName(santri.kelasArabId)}</td>
+                    </tr>
+                  </table>
+
+                  <!-- TABEL NILAI UTAMA -->
+                  <table class="raport-table" style="margin-bottom: 12px;">
+                    <thead>
+                      <tr>
+                        <th style="width: 30px;">NO</th>
+                        <th>Mapel</th>
+                        <th style="width: 44px;">KKM</th>
+                        <th style="width: 38px;">NH 1</th>
+                        <th style="width: 38px;">NH 2</th>
+                        <th style="width: 38px;">NH 3</th>
+                        <th style="width: 38px;">NH 4</th>
+                        <th style="width: 42px;">NU</th>
+                        <th>Catatan Guru</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${mapelSantri.length === 0 ? `
+                        <tr><td colspan="9" style="text-align: center; padding: 14px;">Belum ada mata pelajaran terdaftar untuk kelas santri ini.</td></tr>
+                      ` : mapelSantri.map((m, idx) => {
+                        const n = nilaiSantri.find(item => item.mapelId === m.id) || {};
+                        return `
+                          <tr>
+                            <td style="text-align: center;">${idx + 1}</td>
+                            <td>${m.namaMapel}</td>
+                            <td style="text-align: center;">${m.kkm}</td>
+                            <td style="text-align: center;">${n.nh1 ?? '-'}</td>
+                            <td style="text-align: center;">${n.nh2 ?? '-'}</td>
+                            <td style="text-align: center;">${n.nh3 ?? '-'}</td>
+                            <td style="text-align: center;">${n.nh4 ?? '-'}</td>
+                            <td style="text-align: center; font-weight: bold;">${n.nu ?? '-'}</td>
+                            <td>${n.catatanGuru || ''}</td>
+                          </tr>
+                        `;
+                      }).join('')}
+                    </tbody>
+                  </table>
+
+                  <!-- DUA KOLOM SEJAJAR: CATATAN PENGASUH & REKAP ABSENSI -->
+                  <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: stretch;">
+                    <div style="flex: 1; border: 1px solid #000; padding: 8px;">
+                      <div style="font-weight: bold; text-align: center; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 6px; font-size: 10pt;">Catatan Pengasuh</div>
+                      <div style="font-size: 9.5pt; min-height: 75px; white-space: pre-line;">${ev.catatanPengasuh || 'Tetap istiqomah dalam beribadah, menjaga akhlakul karimah, dan rajin belajar.'}</div>
+                    </div>
+
+                    <div style="flex: 1; border: 1px solid #000; padding: 8px;">
+                      <div style="font-weight: bold; text-align: center; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 6px; font-size: 10pt;">Rekap Absensi</div>
+                      <table style="width: 100%; border-collapse: collapse; font-size: 9pt;">
+                        <thead>
+                          <tr>
+                            <th style="text-align: left; border-bottom: 1px solid #000; padding: 2px;">Kategori</th>
+                            <th style="border-bottom: 1px solid #000; padding: 2px;">H</th>
+                            <th style="border-bottom: 1px solid #000; padding: 2px;">I</th>
+                            <th style="border-bottom: 1px solid #000; padding: 2px;">S</th>
+                            <th style="border-bottom: 1px solid #000; padding: 2px;">A</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${[
+                            { key: 'jamaah', label: 'Jamaah' },
+                            { key: 'quran', label: "Kelas Qur'an" },
+                            { key: 'arab', label: 'Kelas B. Arab' },
+                            { key: 'diniyah', label: 'Diniyah' }
+                          ].map(c => {
+                            const v = abs[c.key] || { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+                            return `
+                              <tr>
+                                <td style="padding: 2px 0;">${c.label}</td>
+                                <td style="text-align: center;">${v.hadir}</td>
+                                <td style="text-align: center;">${v.izin}</td>
+                                <td style="text-align: center;">${v.sakit}</td>
+                                <td style="text-align: center;">${v.alpa}</td>
+                              </tr>
+                            `;
+                          }).join('')}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- PERNYATAAN KEPUTUSAN & KENAIKAN -->
+                  <div style="border: 1px solid #000; padding: 8px 10px; margin-bottom: 16px; font-size: 10pt;">
+                    <table style="width: 100%;">
+                      <tr>
+                        <td style="vertical-align: top; width: 46%;">
+                          Santri dengan Nama <strong>${santri.nama}</strong> dinyatakan:
+                        </td>
+                        <td style="vertical-align: top;">
+                          <div>
+                            <span style="${quranLulus ? 'font-weight:bold;' : 'text-decoration:line-through; color:#666;'}">Lulus</span> /
+                            <span style="${!quranLulus ? 'font-weight:bold;' : 'text-decoration:line-through; color:#666;'}">Tidak Lulus</span>
+                            Ujian Qur'an
+                          </div>
+                          <div>
+                            <span style="${arabNaik ? 'font-weight:bold;' : 'text-decoration:line-through; color:#666;'}">Naik</span> /
+                            <span style="${!arabNaik ? 'font-weight:bold;' : 'text-decoration:line-through; color:#666;'}">Tidak Naik</span>
+                            Ujian B. Arab
+                          </div>
+                          <div>
+                            <span style="${diniyahNaik ? 'font-weight:bold;' : 'text-decoration:line-through; color:#666;'}">Naik</span> /
+                            <span style="${!diniyahNaik ? 'font-weight:bold;' : 'text-decoration:line-through; color:#666;'}">Tidak Naik</span>
+                            Ujian Diniyah
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+
+                  <!-- BLOK TANDA TANGAN -->
+                  <table style="width: 100%; font-size: 10pt; margin-top: 10px;">
+                    <tr>
+                      <td style="width: 50%; text-align: center; vertical-align: top;">
+                        <div>Mengetahui,</div>
+                        <div>Orang Tua / Wali Santri</div>
+                        <div style="height: 55px;"></div>
+                        <div style="font-weight: bold; text-decoration: underline;">${santri.namaWali || '........................................'}</div>
+                      </td>
+                      <td style="width: 50%; text-align: center; vertical-align: top;">
+                        <div>Ditetapkan tanggal: ${ev.tanggalPenetapan || sett.tanggalRaport}</div>
+                        <div>Pengasuh Pondok Pesantren</div>
+                        <div style="height: 55px;"></div>
+                        <div style="font-weight: bold; text-decoration: underline;">${sett.namaPengasuh || '........................................'}</div>
+                      </td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // MODUL 7: MANAJEMEN AKUN PORTAL & AUDIT LOG
+    // =========================================================================
+    window.addPortalUserSubmit = async function (e) {
+      e.preventDefault();
+      const f = e.target;
+      const role = f.role.value;
+      const username = f.username.value.trim();
+
+      if (state.usersPortal.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+        return showToast('Username/NIS sudah digunakan oleh akun lain!', 'error');
+      }
+
+      const payload = {
+        nama: f.nama.value.trim(),
+        username,
+        password: f.password.value.trim(),
+        role,
+        refId: role === 'wali' ? f.refId.value : '',
+        statusAktif: true
+      };
+
+      await saveData('users_portal', 'usersPortal', payload);
+      await logAudit('Tambah Akun Portal', `Membuat akun ${payload.role} untuk ${payload.nama} (${payload.username})`);
+      showToast('Akun pengguna portal berhasil ditambahkan');
+      f.reset();
+    };
+
+    window.togglePortalUserStatus = async function (userId) {
+      const target = state.usersPortal.find(u => u.id === userId);
+      if (!target) return;
+      await saveData('users_portal', 'usersPortal', { statusAktif: !target.statusAktif }, userId);
+      await logAudit('Ubah Status Akun', `Mengubah status aktif akun ${target.username}`);
+      showToast(`Status akun ${target.username} diperbarui`);
+    };
+
+    window.deletePortalUser = async function (userId) {
+      const target = state.usersPortal.find(u => u.id === userId);
+      await removeData('users_portal', 'usersPortal', userId);
+      if (target) await logAudit('Hapus Akun Portal', `Menghapus akun ${target.username}`);
+      showToast('Akun portal dihapus');
+    };
+
+    function renderPenggunaModule() {
+      const roleLabels = {
+        admin_pondok: 'Admin Pondok',
+        guru: 'Guru / Ustadz',
+        pengasuh: 'Pengasuh',
+        wali: 'Orang Tua / Wali'
+      };
+
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl md:text-2xl font-extrabold text-slate-900">Manajemen Akun Portal & Audit Log</h1>
+            <p class="text-xs md:text-sm text-slate-500">Kelola akses masuk untuk Admin Pondok, Guru, Pengasuh, dan Orang Tua/Wali Santri serta pantau aktivitas sistem.</p>
+          </div>
+
+          <!-- FORM TAMBAH AKUN PORTAL -->
+          <div class="glass-panel rounded-2xl p-5 shadow-xs space-y-4">
+            <h2 class="text-base font-extrabold text-slate-900 border-b border-slate-200 pb-2.5">Buat Akun Pengguna Portal Baru</h2>
+            <form onsubmit="addPortalUserSubmit(event)" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Peran / Hak Akses</label>
+                <select name="role" onchange="document.getElementById('wali-santri-wrap').classList.toggle('hidden', this.value !== 'wali')" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold">
+                  <option value="guru">Guru / Ustadz</option>
+                  <option value="pengasuh">Pengasuh</option>
+                  <option value="admin_pondok">Admin Pondok</option>
+                  <option value="wali">Orang Tua / Wali</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Nama Lengkap</label>
+                <input type="text" name="nama" required placeholder="Nama Ustadz / Wali" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Username / NIS</label>
+                <input type="text" name="username" required placeholder="Username login" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Password / Kode Akses</label>
+                <input type="text" name="password" required placeholder="Password login" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div id="wali-santri-wrap" class="hidden">
+                <label class="block font-bold text-slate-700 mb-1">Tautkan Santri (Wali)</label>
+                <select name="refId" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white">
+                  <option value="">-- Pilih Santri --</option>
+                  ${state.santri.map(s => `<option value="${s.id}">${s.nis} - ${s.nama}</option>`).join('')}
+                </select>
+              </div>
+              <div class="flex items-end">
+                <button type="submit" class="w-full py-2 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold">
+                  + Buat Akun
+                </button>
+              </div>
+            </form>
+
+            <!-- TABEL DAFTAR AKUN PORTAL -->
+            <div class="overflow-x-auto pt-2">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                    <th class="p-3 font-bold">Nama Pengguna</th>
+                    <th class="p-3 font-bold">Username / NIS</th>
+                    <th class="p-3 font-bold">Password</th>
+                    <th class="p-3 font-bold">Peran</th>
+                    <th class="p-3 font-bold">Keterangan</th>
+                    <th class="p-3 font-bold">Status</th>
+                    <th class="p-3 font-bold text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  ${state.usersPortal.length === 0 ? `
+                    <tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada akun portal terdaftar.</td></tr>
+                  ` : state.usersPortal.map(u => {
+                    const linkedSantri = u.role === 'wali' ? state.santri.find(s => s.id === u.refId || s.nis === u.username) : null;
+                    return `
+                      <tr class="hover:bg-slate-50">
+                        <td class="p-3 font-extrabold text-slate-900">${u.nama}</td>
+                        <td class="p-3 font-mono font-bold text-emerald-900">${u.username}</td>
+                        <td class="p-3 font-mono text-slate-600">${u.password}</td>
+                        <td class="p-3"><span class="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-800 font-bold">${roleLabels[u.role] || u.role}</span></td>
+                        <td class="p-3 text-slate-500">${linkedSantri ? `Wali dari: ${linkedSantri.nama}` : '-'}</td>
+                        <td class="p-3">
+                          <span class="px-2 py-0.5 rounded-md font-bold ${u.statusAktif ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">
+                            ${u.statusAktif ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                        </td>
+                        <td class="p-3 text-right whitespace-nowrap space-x-1">
+                          <button type="button" onclick="togglePortalUserStatus('${u.id}')" class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-bold">
+                            ${u.statusAktif ? 'Nonaktifkan' : 'Aktifkan'}
+                          </button>
+                          <button type="button" onclick="deletePortalUser('${u.id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 font-bold">Hapus</button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- RIWAYAT AUDIT LOG -->
+          <div class="glass-panel rounded-2xl p-5 shadow-xs space-y-3">
+            <h2 class="text-base font-extrabold text-slate-900 border-b border-slate-200 pb-2.5">Riwayat Aktivitas Sistem (Audit Log)</h2>
+            <div class="space-y-2 max-h-72 overflow-y-auto pr-1 text-xs">
+              ${state.auditLogs.length === 0 ? `
+                <div class="p-4 text-center text-slate-400">Belum ada catatan aktivitas.</div>
+              ` : state.auditLogs.slice(0, 40).map(log => `
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div>
+                    <span class="font-extrabold text-emerald-900">${log.aksi}</span>
+                    <span class="text-slate-600"> — ${log.detail}</span>
+                  </div>
+                  <div class="text-[11px] text-slate-400 shrink-0">
+                    ${log.user} (${log.role}) • ${log.timestamp}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // MODUL 8: MANAJEMEN DATA KESELURUHAN, HAPUS PER KATEGORI, BACKUP & RESTORE
+    // =========================================================================
+    window.confirmDeleteCategoryModal = function (catKey, catLabel, count) {
+      if (count === 0) return showToast(`Data ${catLabel} sudah kosong.`, 'info');
+      openModal(`
+        <div class="space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h3 class="text-base font-extrabold text-rose-700 flex items-center gap-2">
+              <i data-lucide="alert-triangle" class="w-5 h-5"></i> Konfirmasi Hapus Data Kategori
+            </h3>
+            <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
+          </div>
+          <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-2">
+            <p class="font-bold">Anda akan menghapus seluruh data pada kategori: <span class="underline">${catLabel}</span> (${count} data).</p>
+            <p>Tindakan ini tidak dapat dibatalkan secara otomatis. Pastikan Anda sudah mengunduh <strong>Backup Data</strong> terlebih dahulu.</p>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Batal</button>
+            <button type="button" onclick="executeDeleteCategory('${catKey}', '${catLabel}')" class="px-5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold">
+              Ya, Hapus Semua (${count})
+            </button>
+          </div>
+        </div>
+      `);
+    };
+
+    window.executeDeleteCategory = async function (catKey, catLabel) {
+      closeModal();
+      const mapConfig = {
+        santri: { col: 'santri', key: 'santri' },
+        kelas: { col: 'kelas', key: 'kelas' },
+        mataPelajaran: { col: 'mata_pelajaran', key: 'mataPelajaran' },
+        penilaian: { col: 'penilaian', key: 'penilaian' },
+        absensiSemester: { col: 'absensi_semester', key: 'absensiSemester' },
+        evaluasiRaport: { col: 'evaluasi_raport', key: 'evaluasiRaport' },
+        usersPortal: { col: 'users_portal', key: 'usersPortal' },
+        auditLogs: { col: 'audit_logs', key: 'auditLogs' }
+      };
+      const cfg = mapConfig[catKey];
+      if (!cfg) return;
+
+      const items = [...state[cfg.key]];
+      if (IS_PREVIEW) {
+        state[cfg.key] = [];
+        renderApp();
+      } else if (fbDb) {
+        showToast(`Menghapus ${items.length} data ${catLabel}...`, 'info');
+        for (const item of items) {
+          await deleteDoc(doc(fbDb, cfg.col, item.id));
+        }
+      }
+      await logAudit('Hapus Data Kategori', `Menghapus seluruh ${items.length} data pada kategori ${catLabel}`);
+      showToast(`Seluruh data ${catLabel} (${items.length} item) berhasil dihapus`);
+    };
+
+    window.downloadFullBackupJson = async function () {
+      const backupPayload = {
+        appName: 'E-Raport Pondok Pesantren & Madrasah Diniyah',
+        exportedAt: new Date().toISOString(),
+        tahunAjaran: state.settings.tahunAjaranAktif,
+        semester: state.settings.semesterAktif,
+        data: {
+          settings: state.settings,
+          kelas: state.kelas,
+          mataPelajaran: state.mataPelajaran,
+          santri: state.santri,
+          penilaian: state.penilaian,
+          absensiSemester: state.absensiSemester,
+          evaluasiRaport: state.evaluasiRaport,
+          usersPortal: state.usersPortal,
+          auditLogs: state.auditLogs
+        }
+      };
+      const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `Backup_Lengkap_ERaport_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      await logAudit('Backup Data', 'Mengunduh file backup lengkap JSON');
+      showToast('File Backup JSON seluruh data berhasil diunduh');
+    };
+
+    window.downloadFullBackupExcel = async function () {
+      const wb = XLSX.utils.book_new();
+      const addSheet = (arr, name) => {
+        const clean = arr.length ? arr.map(({ id, ...rest }) => ({ ID_Sistem: id, ...rest })) : [{ Info: 'Kosong' }];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clean), name);
+      };
+      addSheet([state.settings], 'Profil_Pondok');
+      addSheet(state.kelas, 'Data_Kelas');
+      addSheet(state.mataPelajaran, 'Mata_Pelajaran');
+      addSheet(state.santri, 'Data_Santri');
+      addSheet(state.penilaian, 'Nilai_Santri');
+      addSheet(
+        state.absensiSemester.map(a => ({
+          ID_Sistem: a.id,
+          Tahun_Ajaran: a.tahunAjaran,
+          Semester: a.semester,
+          Santri_ID: a.santriId,
+          Jamaah_H: a.jamaah?.hadir || 0, Jamaah_I: a.jamaah?.izin || 0, Jamaah_S: a.jamaah?.sakit || 0, Jamaah_A: a.jamaah?.alpa || 0,
+          Quran_H: a.quran?.hadir || 0, Quran_I: a.quran?.izin || 0, Quran_S: a.quran?.sakit || 0, Quran_A: a.quran?.alpa || 0,
+          Arab_H: a.arab?.hadir || 0, Arab_I: a.arab?.izin || 0, Arab_S: a.arab?.sakit || 0, Arab_A: a.arab?.alpa || 0,
+          Diniyah_H: a.diniyah?.hadir || 0, Diniyah_I: a.diniyah?.izin || 0, Diniyah_S: a.diniyah?.sakit || 0, Diniyah_A: a.diniyah?.alpa || 0
+        })),
+        'Rekap_Absensi'
+      );
+      addSheet(state.evaluasiRaport, 'Catatan_Pengasuh');
+      addSheet(state.usersPortal, 'Akun_Portal');
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `Backup_Lengkap_ERaport_${dateStr}.xlsx`);
+      await logAudit('Backup Excel', 'Mengunduh arsip lengkap multi-sheet Excel');
+      showToast('Arsip Excel Multi-Sheet seluruh data berhasil diunduh');
+    };
+
+    window.handleRestoreJsonFile = async function (event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (!parsed || !parsed.data || !Array.isArray(parsed.data.santri)) {
+          throw new Error('Format file backup JSON tidak valid.');
+        }
+
+        const d = parsed.data;
+        openModal(`
+          <div class="space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 class="text-base font-extrabold text-slate-900">Konfirmasi Restore Database</h3>
+              <button type="button" onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold">&times;</button>
+            </div>
+            <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 space-y-1">
+              <div class="font-bold">Ringkasan Isi File Backup (${parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleString('id-ID') : '-'}):</div>
+              <div>• Kelas: <strong>${d.kelas?.length || 0}</strong> | Mata Pelajaran: <strong>${d.mataPelajaran?.length || 0}</strong> | Santri: <strong>${d.santri?.length || 0}</strong></div>
+              <div>• Nilai: <strong>${d.penilaian?.length || 0}</strong> | Absensi: <strong>${d.absensiSemester?.length || 0}</strong> | Evaluasi Pengasuh: <strong>${d.evaluasiRaport?.length || 0}</strong></div>
+            </div>
+            <p class="text-xs text-slate-600">Pilih metode pemulihan data yang diinginkan:</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <button type="button" id="btn-restore-merge" class="p-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-left">
+                <div class="text-xs font-extrabold">Gabung & Perbarui (Merge)</div>
+                <div class="text-[11px] text-emerald-200">Menambahkan/memperbarui data tanpa menghapus data lama yang tidak bentrok.</div>
+              </button>
+              <button type="button" id="btn-restore-replace" class="p-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-left">
+                <div class="text-xs font-extrabold">Timpa Total (Replace)</div>
+                <div class="text-[11px] text-amber-100">Mengganti seluruh data saat ini agar persis sama dengan isi file backup.</div>
+              </button>
+            </div>
+          </div>
+        `);
+
+        window._pendingRestoreData = d;
+        setTimeout(() => {
+          document.getElementById('btn-restore-merge')?.addEventListener('click', () => executeRestoreData('merge'));
+          document.getElementById('btn-restore-replace')?.addEventListener('click', () => executeRestoreData('replace'));
+        }, 50);
+      } catch (err) {
+        showToast('Gagal membaca file backup: ' + err.message, 'error');
+      } finally {
+        event.target.value = '';
+      }
+    };
+
+    async function executeRestoreData(mode) {
+      const d = window._pendingRestoreData;
+      if (!d) return;
+      closeModal();
+      showToast('Memproses pemulihan data...', 'info');
+
+      const collectionsMap = [
+        { col: 'kelas', key: 'kelas' },
+        { col: 'mata_pelajaran', key: 'mataPelajaran' },
+        { col: 'santri', key: 'santri' },
+        { col: 'penilaian', key: 'penilaian' },
+        { col: 'absensi_semester', key: 'absensiSemester' },
+        { col: 'evaluasi_raport', key: 'evaluasiRaport' },
+        { col: 'users_portal', key: 'usersPortal' }
+      ];
+
+      if (IS_PREVIEW) {
+        if (d.settings) state.settings = { ...defaultSettings, ...d.settings };
+        for (const cfg of collectionsMap) {
+          const incoming = Array.isArray(d[cfg.key]) ? d[cfg.key] : [];
+          if (mode === 'replace') {
+            state[cfg.key] = incoming;
+          } else {
+            const map = new Map(state[cfg.key].map(i => [i.id, i]));
+            incoming.forEach(item => map.set(item.id || ('r_' + Math.random()), item));
+            state[cfg.key] = Array.from(map.values());
+          }
+        }
+        renderApp();
+      } else if (fbDb) {
+        if (d.settings) {
+          await setDoc(doc(fbDb, 'settings_pondok', 'profil'), d.settings, { merge: mode === 'merge' });
+        }
+        for (const cfg of collectionsMap) {
+          if (mode === 'replace') {
+            for (const oldItem of state[cfg.key]) {
+              await deleteDoc(doc(fbDb, cfg.col, oldItem.id));
+            }
+          }
+          const incoming = Array.isArray(d[cfg.key]) ? d[cfg.key] : [];
+          for (const item of incoming) {
+            const { id, ...cleanObj } = item;
+            if (id) await setDoc(doc(fbDb, cfg.col, id), cleanObj, { merge: true });
+            else await addDoc(collection(fbDb, cfg.col), cleanObj);
+          }
+        }
+      }
+
+      window._pendingRestoreData = null;
+      await logAudit('Restore Data', `Memulihkan database menggunakan mode ${mode.toUpperCase()}`);
+      showToast(`Pemulihan data (${mode.toUpperCase()}) berhasil selesai!`);
+    }
+
+    function renderManajemenDataModule() {
+      const categories = [
+        { key: 'santri', label: 'Data Induk Santri', desc: 'Seluruh profil santri aktif, alumni, maupun keluar.', count: state.santri.length, icon: 'users' },
+        { key: 'kelas', label: 'Data Kelas', desc: 'Daftar kelas Diniyah, Al-Qur\'an, dan Bahasa Arab.', count: state.kelas.length, icon: 'layers' },
+        { key: 'mataPelajaran', label: 'Data Mata Pelajaran', desc: 'Daftar kitab/mapel, KKM, dan guru pengampu.', count: state.mataPelajaran.length, icon: 'book-open' },
+        { key: 'penilaian', label: 'Data Nilai Santri', desc: 'Seluruh nilai NH 1-4, NU, nilai akhir, dan catatan guru.', count: state.penilaian.length, icon: 'file-spreadsheet' },
+        { key: 'absensiSemester', label: 'Data Rekap Absensi', desc: 'Rekap kehadiran Jamaah, Qur\'an, Arab, dan Diniyah.', count: state.absensiSemester.length, icon: 'calendar-check' },
+        { key: 'evaluasiRaport', label: 'Catatan Pengasuh & Kenaikan', desc: 'Catatan pengasuh, kelulusan ujian, dan status pengesahan.', count: state.evaluasiRaport.length, icon: 'award' },
+        { key: 'usersPortal', label: 'Akun Portal (Guru/Pengasuh/Wali)', desc: 'Daftar username dan password pengguna non-admin.', count: state.usersPortal.length, icon: 'key-round' },
+        { key: 'auditLogs', label: 'Riwayat Audit Log', desc: 'Catatan jejak aktivitas sistem.', count: state.auditLogs.length, icon: 'history' }
+      ];
+
+      return `
+        <div class="space-y-6">
+          <div>
+            <h1 class="text-xl md:text-2xl font-extrabold text-slate-900">Manajemen Data Keseluruhan, Backup & Restore</h1>
+            <p class="text-xs md:text-sm text-slate-500">Cadangkan seluruh database pondok, pulihkan data dari arsip, atau bersihkan data per kategori secara terkendali.</p>
+          </div>
+
+          <!-- BAGIAN 1: BACKUP & RESTORE -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="glass-panel rounded-2xl p-5 shadow-xs space-y-3 border-l-4 border-l-emerald-700">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                  <i data-lucide="download-cloud" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h2 class="text-sm font-extrabold text-slate-900">Backup Seluruh Data Sistem</h2>
+                  <p class="text-xs text-slate-500">Simpan cadangan lengkap database sebelum melakukan reset tahun ajaran atau pembersihan data.</p>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2 pt-2">
+                <button type="button" onclick="downloadFullBackupJson()" class="px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-sm flex items-center gap-1.5">
+                  <i data-lucide="file-json" class="w-4 h-4"></i> Unduh Backup Lengkap (.JSON)
+                </button>
+                <button type="button" onclick="downloadFullBackupExcel()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5">
+                  <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Ekspor Arsip Excel Multi-Sheet (.XLSX)
+                </button>
+              </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-5 shadow-xs space-y-3 border-l-4 border-l-sky-600">
+              <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
+                  <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h2 class="text-sm font-extrabold text-slate-900">Restore / Pulihkan Data dari Backup</h2>
+                  <p class="text-xs text-slate-500">Unggah file <strong>Backup_Lengkap_ERaport_*.json</strong> untuk memulihkan data secara Gabung (Merge) atau Timpa Total.</p>
+                </div>
+              </div>
+              <div class="pt-2">
+                <label class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold shadow-sm cursor-pointer">
+                  <i data-lucide="folder-up" class="w-4 h-4"></i> Pilih File Backup (.JSON) untuk Restore
+                  <input type="file" accept=".json,application/json" onchange="handleRestoreJsonFile(event)" class="hidden" />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- BAGIAN 2: PENGHAPUSAN DATA PER KATEGORI -->
+          <div class="glass-panel rounded-2xl p-5 shadow-xs space-y-4">
+            <div class="border-b border-slate-200 pb-3">
+              <h2 class="text-base font-extrabold text-slate-900">Penghapusan Data per Kategori</h2>
+              <p class="text-xs text-slate-500">Gunakan fitur ini dengan hati-hati untuk mengosongkan kategori data tertentu (misalnya menghapus nilai atau absensi lama).</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              ${categories.map(c => `
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between gap-3">
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <span class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 flex items-center justify-center">
+                        <i data-lucide="${c.icon}" class="w-4 h-4"></i>
+                      </span>
+                      <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${c.count > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
+                        ${c.count} Data
+                      </span>
+                    </div>
+                    <div class="text-xs font-extrabold text-slate-900 pt-1">${c.label}</div>
+                    <p class="text-[11px] text-slate-500 leading-relaxed">${c.desc}</p>
+                  </div>
+                  <button type="button" onclick="confirmDeleteCategoryModal('${c.key}', '${c.label.replace(/'/g, '')}', ${c.count})"
+                    ${c.count === 0 ? 'disabled' : ''}
+                    class="w-full py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                      c.count === 0
+                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        : 'bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200'
+                    }">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Hapus Kategori Ini
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // RENDER SHELL UTAMA & LOGIN
+    // =========================================================================
+    function renderLoginScreen() {
+      return `
+        <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-emerald-950 via-emerald-900 to-slate-900">
+          <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 md:p-8 space-y-6">
+            <div class="text-center space-y-2">
+              <div class="w-14 h-14 rounded-2xl bg-emerald-800 text-white flex items-center justify-center mx-auto shadow-lg">
+                <i data-lucide="book-open-check" class="w-7 h-7"></i>
+              </div>
+              <h1 class="text-lg md:text-xl font-extrabold text-slate-900">E-RAPORT PONDOK PESANTREN</h1>
+              <p class="text-xs text-slate-500">Sistem Informasi Akademik & Madrasah Diniyah</p>
+            </div>
+
+            ${IS_PREVIEW ? `
+              <div class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 space-y-1">
+                <div class="font-extrabold">MODE PREVIEW AKTIF (DATA DEMO)</div>
+                <div>• <strong>Admin:</strong> admin@pesantren.id / admin123</div>
+                <div>• <strong>Guru:</strong> guru1 / 123 • <strong>Pengasuh:</strong> pengasuh / 123 • <strong>Wali:</strong> 2025001 / 123</div>
+              </div>
+            ` : ''}
+
+            ${!IS_PREVIEW && fbInitError ? `
+              <div class="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-[11px] text-rose-900 space-y-1">
+                <div class="font-extrabold">Konfigurasi Firebase Belum Lengkap</div>
+                <div>${fbInitError}</div>
+                <div class="text-[10px] text-rose-700 pt-1">Pastikan <strong>firebaseConfig</strong> di dalam <code>index.html</code> sudah diisi dari Firebase Console dan domain Vercel sudah ditambahkan ke <em>Authentication &gt; Settings &gt; Authorized domains</em>.</div>
+              </div>
+            ` : ''}
+
+            <div class="grid grid-cols-2 p-1 rounded-xl bg-slate-100 text-xs font-bold">
+              <button type="button" onclick="switchLoginTab('portal')" class="py-2 rounded-lg transition ${state.loginTab === 'portal' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-500'}">
+                Guru / Pengasuh / Wali
+              </button>
+              <button type="button" onclick="switchLoginTab('admin')" class="py-2 rounded-lg transition ${state.loginTab === 'admin' ? 'bg-white text-emerald-900 shadow-xs' : 'text-slate-500'}">
+                Admin Pondok
+              </button>
+            </div>
+
+            <form onsubmit="handleLoginSubmit(event)" class="space-y-4 text-xs">
+              ${state.loginTab === 'admin' ? `
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Email Administrator</label>
+                  <input type="email" name="email" required value="${IS_PREVIEW ? 'admin@pesantren.id' : ''}" placeholder="admin@pesantren.id" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300" />
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Password</label>
+                  <input type="password" name="password" required value="${IS_PREVIEW ? 'admin123' : ''}" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300" />
+                </div>
+              ` : `
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Username / NIS Santri</label>
+                  <input type="text" name="username" required value="${IS_PREVIEW ? 'guru1' : ''}" placeholder="Masukkan Username atau NIS" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300" />
+                </div>
+                <div>
+                  <label class="block font-bold text-slate-700 mb-1">Password / Kode Akses</label>
+                  <input type="password" name="password" required value="${IS_PREVIEW ? '123' : ''}" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300" />
+                </div>
+              `}
+              <button type="submit" class="w-full py-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold text-sm shadow-lg transition">
+                Masuk ke Sistem
+              </button>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    function getMenusForRole(role) {
+      const allMenus = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard', roles: ['super_admin', 'admin_pondok', 'guru', 'pengasuh'] },
+        { id: 'master', label: 'Data Master', icon: 'database', roles: ['super_admin', 'admin_pondok'] },
+        { id: 'penilaian', label: 'Input Nilai', icon: 'file-spreadsheet', roles: ['super_admin', 'admin_pondok', 'guru'] },
+        { id: 'absensi', label: 'Rekap Absensi', icon: 'calendar-check', roles: ['super_admin', 'admin_pondok', 'guru'] },
+        { id: 'evaluasi', label: 'Catatan Pengasuh', icon: 'award', roles: ['super_admin', 'pengasuh'] },
+        { id: 'cetak_raport', label: 'Cetak Raport', icon: 'printer', roles: ['super_admin', 'admin_pondok', 'pengasuh', 'wali'] },
+        { id: 'manajemen_data', label: 'Manajemen Data', icon: 'hard-drive', roles: ['super_admin', 'admin_pondok'] },
+        { id: 'pengguna', label: 'Akun & Audit', icon: 'shield-check', roles: ['super_admin'] }
+      ];
+      return allMenus.filter(m => m.roles.includes(role));
+    }
+
+    function renderApp() {
+      const root = document.getElementById('app-view');
+      if (!root) return;
+
+      if (!state.currentUser) {
+        root.innerHTML = renderLoginScreen();
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      const menus = getMenusForRole(state.currentUser.role);
+      if (!menus.some(m => m.id === state.activeMenu)) {
+        state.activeMenu = menus[0]?.id || 'dashboard';
+      }
+
+      let contentHtml = '';
+      if (state.activeMenu === 'dashboard') contentHtml = renderDashboard();
+      else if (state.activeMenu === 'master') contentHtml = renderMasterModule();
+      else if (state.activeMenu === 'penilaian') contentHtml = renderPenilaianModule();
+      else if (state.activeMenu === 'absensi') contentHtml = renderAbsensiModule();
+      else if (state.activeMenu === 'evaluasi') contentHtml = renderEvaluasiModule();
+      else if (state.activeMenu === 'cetak_raport') contentHtml = renderCetakRaportModule();
+      else if (state.activeMenu === 'manajemen_data') contentHtml = renderManajemenDataModule();
+      else if (state.activeMenu === 'pengguna') contentHtml = renderPenggunaModule();
+
+      root.innerHTML = `
+        <div class="min-h-screen flex flex-col md:flex-row">
+          <!-- DESKTOP FIXED SIDEBAR -->
+          <aside class="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-emerald-950 text-white z-30 no-print">
+            <div class="p-5 border-b border-emerald-900 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-700 flex items-center justify-center shrink-0">
+                <i data-lucide="book-open-check" class="w-5 h-5 text-white"></i>
+              </div>
+              <div class="overflow-hidden">
+                <div class="font-extrabold text-sm tracking-tight truncate">E-RAPORT PONDOK</div>
+                <div class="text-[11px] text-emerald-300 truncate">${state.settings.semesterAktif} ${state.settings.tahunAjaranAktif}</div>
+              </div>
+            </div>
+
+            ${IS_PREVIEW ? `
+              <div class="mx-4 mt-3 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/30 text-amber-200 text-[10px] font-bold text-center">
+                MODE PREVIEW (DEMO)
+              </div>
+            ` : ''}
+
+            <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+              ${menus.map(m => `
+                <button type="button" onclick="navigateMenu('${m.id}')" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition ${
+                  state.activeMenu === m.id
+                    ? 'bg-emerald-700 text-white shadow-md'
+                    : 'text-emerald-200 hover:bg-emerald-900/70 hover:text-white'
+                }">
+                  <i data-lucide="${m.icon}" class="w-4 h-4 shrink-0"></i>
+                  <span>${m.label}</span>
+                </button>
+              `).join('')}
+            </nav>
+
+            <div class="p-4 border-t border-emerald-900 space-y-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-emerald-800 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                  ${state.currentUser.nama.charAt(0)}
+                </div>
+                <div class="overflow-hidden">
+                  <div class="text-xs font-bold truncate">${state.currentUser.nama}</div>
+                  <div class="text-[10px] text-emerald-300 uppercase">${state.currentUser.role.replace('_', ' ')}</div>
+                </div>
+              </div>
+              <button type="button" onclick="handleLogout()" class="w-full py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-200 hover:text-white text-xs font-bold transition flex items-center justify-center gap-1.5">
+                <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Keluar Aplikasi
+              </button>
+            </div>
+          </aside>
+
+          <!-- MOBILE TOP HEADER -->
+          <header class="md:hidden glass-nav sticky top-0 z-30 border-b border-slate-200 px-3.5 py-2.5 flex items-center justify-between gap-2 no-print">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <button type="button" onclick="toggleMobileDrawer(true)" aria-label="Buka Menu Navigasi"
+                class="w-9 h-9 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white flex items-center justify-center shrink-0 shadow-xs active:scale-95 transition">
+                <i data-lucide="menu" class="w-5 h-5"></i>
+              </button>
+              <div class="min-w-0">
+                <div class="font-extrabold text-xs text-slate-900 truncate">E-RAPORT PESANTREN</div>
+                <div class="text-[10px] text-emerald-700 font-bold truncate">${menus.find(m => m.id === state.activeMenu)?.label || 'Dashboard'} • ${state.currentUser.nama}</div>
+              </div>
+            </div>
+            <button type="button" onclick="handleLogout()" class="px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-700 text-[11px] font-bold shrink-0">
+              Keluar
+            </button>
+          </header>
+
+          <!-- MOBILE SLIDE-OVER DRAWER (MENAMPILKAN SELURUH MODUL SIDEBAR DI HP) -->
+          ${state.mobileDrawerOpen ? `
+            <div class="md:hidden fixed inset-0 z-50 flex no-print">
+              <div onclick="toggleMobileDrawer(false)" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"></div>
+              <aside class="relative w-72 max-w-[82vw] bg-emerald-950 text-white h-full flex flex-col shadow-2xl z-10">
+                <div class="p-4 border-b border-emerald-900 flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-700 flex items-center justify-center shrink-0">
+                      <i data-lucide="book-open-check" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div class="overflow-hidden">
+                      <div class="font-extrabold text-xs tracking-tight truncate">E-RAPORT PONDOK</div>
+                      <div class="text-[10px] text-emerald-300 truncate">${state.settings.semesterAktif} ${state.settings.tahunAjaranAktif}</div>
+                    </div>
+                  </div>
+                  <button type="button" onclick="toggleMobileDrawer(false)" class="w-8 h-8 rounded-lg bg-emerald-900/80 text-emerald-200 flex items-center justify-center">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                  </button>
+                </div>
+
+                ${IS_PREVIEW ? `
+                  <div class="mx-3 mt-3 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/30 text-amber-200 text-[10px] font-bold text-center">
+                    MODE PREVIEW (DEMO)
+                  </div>
+                ` : ''}
+
+                <nav class="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+                  ${menus.map(m => `
+                    <button type="button" onclick="navigateMenu('${m.id}')" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition ${
+                      state.activeMenu === m.id
+                        ? 'bg-emerald-700 text-white shadow-md'
+                        : 'text-emerald-200 hover:bg-emerald-900/70 hover:text-white'
+                    }">
+                      <i data-lucide="${m.icon}" class="w-4 h-4 shrink-0"></i>
+                      <span>${m.label}</span>
+                    </button>
+                  `).join('')}
+                </nav>
+
+                <div class="p-4 border-t border-emerald-900 space-y-3">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-full bg-emerald-800 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                      ${state.currentUser.nama.charAt(0)}
+                    </div>
+                    <div class="overflow-hidden">
+                      <div class="text-xs font-bold truncate">${state.currentUser.nama}</div>
+                      <div class="text-[10px] text-emerald-300 uppercase">${state.currentUser.role.replace('_', ' ')}</div>
+                    </div>
+                  </div>
+                  <button type="button" onclick="handleLogout()" class="w-full py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-200 hover:text-white text-xs font-bold transition flex items-center justify-center gap-1.5">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Keluar Aplikasi
+                  </button>
+                </div>
+              </aside>
+            </div>
+          ` : ''}
+
+          <!-- MAIN WORKSPACE -->
+          <main class="flex-1 md:pl-64 pb-24 md:pb-10">
+            <div class="max-w-7xl mx-auto p-4 md:p-7">
+              ${contentHtml}
+            </div>
+          </main>
+
+          <!-- MOBILE FLOATING BOTTOM NAVIGATION BAR (SCROLLABLE + TOMBOL SEMUA MENU) -->
+          <nav class="md:hidden fixed bottom-2.5 inset-x-2.5 glass-nav border border-slate-200/90 shadow-xl rounded-2xl z-40 px-1.5 py-1.5 flex items-center gap-1 overflow-x-auto no-print">
+            <button type="button" onclick="toggleMobileDrawer(true)" class="flex flex-col items-center justify-center py-1.5 px-2.5 rounded-xl text-emerald-900 bg-emerald-100/80 font-extrabold shrink-0">
+              <i data-lucide="layout-grid" class="w-4 h-4 mb-0.5"></i>
+              <span class="text-[10px] leading-tight">Menu</span>
+            </button>
+            ${menus.map(m => {
+              const shortLabel = m.id === 'master' ? 'Master'
+                : m.id === 'penilaian' ? 'Nilai'
+                : m.id === 'absensi' ? 'Absensi'
+                : m.id === 'evaluasi' ? 'Pengasuh'
+                : m.id === 'cetak_raport' ? 'Raport'
+                : m.id === 'manajemen_data' ? 'Backup'
+                : m.id === 'pengguna' ? 'Akun'
+                : 'Beranda';
+              return `
+                <button type="button" onclick="navigateMenu('${m.id}')" class="flex-1 min-w-[54px] flex flex-col items-center justify-center py-1.5 px-1.5 rounded-xl transition shrink-0 ${
+                  state.activeMenu === m.id ? 'text-emerald-800 bg-emerald-50 font-extrabold' : 'text-slate-500 font-medium'
+                }">
+                  <i data-lucide="${m.icon}" class="w-4 h-4 mb-0.5"></i>
+                  <span class="text-[10px] leading-tight whitespace-nowrap">${shortLabel}</span>
+                </button>
+              `;
+            }).join('')}
+          </nav>
+        </div>
+      `;
+
+      if (window.lucide) lucide.createIcons();
+      if (state.activeMenu === 'dashboard') {
+        initDashboardCharts();
+      }
+    }
+    window.renderApp = renderApp;
+
+    // =========================================================================
+    // BOOTSTRAP APLIKASI
+    // =========================================================================
+    renderApp(); // Render layar awal segera agar tidak pernah blank putih
+
+    if (!IS_PREVIEW && fbAuth) {
+      onAuthStateChanged(fbAuth, (user) => {
+        if (user) {
+          state.currentUser = {
+            id: user.uid,
+            username: user.email,
+            nama: user.displayName || 'Administrator Pondok',
+            role: 'super_admin',
+            refId: ''
+          };
+          startFirestoreSync();
+        }
+        renderApp();
+      });
+    }
+  </script>
+</body>
+</html>
